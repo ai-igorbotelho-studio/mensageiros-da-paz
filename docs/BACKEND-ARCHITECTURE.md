@@ -2,9 +2,19 @@
 
 Documento produzido pelo subagente `backend-integration`, estágio 04
 (Integração & Dados) do pipeline em `DIGITAL-PRODUCT-TEAM.md`. Cobre a stack
-recomendada, modelo de dados, contrato de API, painel de admin, notificações
-push, segurança e checklist de deploy. Base para `mobile-crossplatform`
-(consumo do app) e `devops-deploy` (estágio 06).
+recomendada, modelo de dados, contrato de API, administração de conteúdo,
+notificações push, segurança e checklist de deploy. Base para
+`mobile-crossplatform` (consumo do app) e `devops-deploy` (estágio 06).
+
+> **Revisão 2026-09-18 — escopo restrito a uso pessoal/grupo fechado.**
+> Conforme decisão do Head em `DECISIONS.md` (entrada de 2026-09-18, "Restrição
+> de escopo"), este app é para uso do Head e de pessoas cadastradas
+> manualmente por ele — não é um produto público em escala, sem custo de
+> servidor, publicação pública nas lojas ou manutenção contínua obrigatória.
+> Isso simplifica partes desta arquitetura originalmente desenhadas para um
+> produto público (ver `docs/DEPLOY-READINESS-AUDIT.md`). As seções 4, 5 e 6
+> foram revisadas para refletir isso; o restante do documento (modelo de
+> dados, contrato de leitura) permanece válido sem alteração.
 
 Escopo de conteúdo: conforme `docs/UX-ARCHITECTURE.md`, o app tem Home
 ("Prática da Semana") → Mensageiros → **Orações** / **Músicas** / **Textos**.
@@ -201,68 +211,103 @@ components:
         created_at: { type: string, format: date-time }
 ```
 
-### 3.2 Escrita — admin autenticado
+### 3.2 Escrita — administração de conteúdo (revisado)
 
-Todas exigem `Authorization: Bearer <Firebase ID token>` de um usuário com
-custom claim `admin: true` (ver seção 6).
+**Não há mais rotas de Cloud Function HTTPS para CRUD de admin.** Conforme a
+seção 4, a edição de `practice_of_the_week` e o CRUD de `items` (incluindo
+upload de arquivo) são feitos diretamente pelo Head no Firebase Console,
+protegidos pelas Firestore/Storage Security Rules (`request.auth.token.admin
+== true`, seção 6.1) — sem necessidade de construir/manter endpoints HTTPS
+próprios para isso. A tabela de rotas REST anteriormente documentada aqui
+foi removida; ela só voltaria a fazer sentido se um painel de admin web
+dedicado for construído no futuro (não é o caso no escopo atual).
 
-| Operação | Rota (Cloud Function HTTPS) | Descrição |
-|---|---|---|
-| `PUT /admin/practice-of-the-week` | Atualiza texto da Prática da Semana | Body `{ text }`; valida não-vazio, tamanho máx. razoável (ex. 2000 chars) |
-| `POST /admin/items` | Cria item | Body com metadados; `file_url` só é setado após upload bem-sucedido (fluxo em duas etapas, seção 3.3) |
-| `PUT /admin/items/{id}` | Atualiza item (título, descrição, ordem, published) | — |
-| `DELETE /admin/items/{id}` | Remove item (e o arquivo associado no Storage) | Confirmação obrigatória no painel |
-| `GET /admin/items?category=` | Lista todos os itens da categoria (inclusive não publicados) para o painel | — |
+### 3.3 Upload de arquivo (revisado — sem Cloud Function de validação)
 
-### 3.3 Upload de arquivo
+Upload é feito manualmente pelo Head via Firebase Console → Storage (guia
+passo a passo na seção 4.1) — não há mais um fluxo automatizado de duas
+etapas com Cloud Function `onFinalize` validando o arquivo, porque não há
+mais uma interface de upload de terceiros/não confiável a validar (o único
+operador é o próprio Head, com acesso admin). A validação de tipo/tamanho
+passa a ser responsabilidade do próprio Head ao escolher o arquivo (a
+Security Rule do Storage, seção 6.2, ainda garante que só uma conta admin
+autenticada pode escrever, mesmo que o console não valide o conteúdo do
+arquivo). Se no futuro terceiros (não o Head) puderem fazer upload, reintroduzir
+a validação server-side via Cloud Function.
 
-Fluxo em duas etapas (evita bloquear a Cloud Function com upload grande):
-
-1. Painel admin faz upload direto ao Firebase Storage (caminho
-   `items/{category}/{itemId}/{filename}`), usando o SDK autenticado.
-2. Cloud Function trigger `onFinalize` do Storage valida o arquivo recém-
-   enviado (tipo MIME e tamanho — ver seção 6.2). Se inválido, o arquivo é
-   apagado e o item marcado como `published: false` com erro reportado ao
-   painel. Se válido, grava `file_url`, `file_type`, `mime_type`,
-   `file_size_bytes` de volta no documento `items/{itemId}`.
-
-Tipos aceitos: `application/pdf`, `image/jpeg`, `image/png`,
-`audio/mpeg` (mp3), `audio/mp4`/`audio/x-m4a` (m4a), `audio/wav`,
-`audio/aac`, `audio/ogg`. Tamanho máximo recomendado: 20 MB para PDF/imagem,
-50 MB para áudio — ajustável, mas deve ser um valor explícito e documentado
-(a confirmar com o Head conforme volume real de conteúdo).
+Tipos aceitos (orientação para o Head ao escolher o arquivo, não mais
+imposição automática de servidor): `application/pdf`, `image/jpeg`,
+`image/png`, `audio/mpeg` (mp3), `audio/mp4`/`audio/x-m4a` (m4a),
+`audio/wav`, `audio/aac`, `audio/ogg`. Tamanho recomendado: até 20 MB para
+PDF/imagem, até 50 MB para áudio (o free tier do Storage tem 5 GB de
+armazenamento total — evitar arquivos desnecessariamente grandes).
 
 ---
 
-## 4. Painel de administração (mínimo viável)
+## 4. Administração de conteúdo (revisado — sem painel web dedicado)
 
-Aplicação web separada do app mobile, não publicada nas lojas — pode ser um
-SPA simples hospedado no Firebase Hosting, atrás de login.
+**Decisão para o escopo fechado atual: não construir nem manter um painel de
+admin web separado.** Para um único administrador de conteúdo (o Head)
+editando ocasionalmente 1 texto e uma lista pequena de itens, o **próprio
+Firebase Console** (gratuito, já incluso em qualquer projeto Firebase) cobre
+100% da necessidade: editor de documentos Firestore com formulário de campos,
+e upload de arquivo com clique-arrastar no Storage. Construir um SPA React
+seria esforço de desenvolvimento e manutenção contínua (dependências,
+hospedagem, autenticação própria) sem ganho real para um usuário só editando
+esporadicamente. Se no futuro houver múltiplos administradores editando
+frequentemente, reavaliar um painel dedicado — não é o caso hoje.
 
-Telas mínimas:
+### 4.1 Guia rápido — como o Head edita pelo Firebase Console
 
-1. **Login** — e-mail/senha via Firebase Auth, restrito a contas
-   provisionadas manualmente pelo Head/admin técnico (sem cadastro
-   público).
-2. **Prática da Semana** — formulário com textarea do texto atual +
-   timestamp da última edição + botão "Salvar".
-3. **Conteúdo por subpágina** (Orações / Músicas / Textos) — três abas ou
-   seletor de categoria, cada uma com:
-   - Listagem dos itens existentes (título, tipo de arquivo, status
-     publicado/rascunho, ordem), ordenável por drag-and-drop ou campo
-     numérico `order`.
-   - Botão "Novo item": formulário com título, descrição opcional, upload de
-     arquivo (input de arquivo com preview — imagem mostra thumbnail, PDF
-     mostra ícone + nome, áudio mostra player simples de pré-escuta),
-     validação de tipo/tamanho no client antes de enviar.
-   - Ação de editar (metadados, trocar arquivo) e remover (com confirmação).
-4. **Notificações** (ligado à seção 5) — botão opcional "Enviar notificação"
-   com campo de título/mensagem, para o admin disparar push manual (ex.
-   avisando nova Prática da Semana).
+**Editar a Prática da Semana:**
+1. Acessar https://console.firebase.google.com → projeto do app → **Firestore
+   Database**.
+2. Abrir a coleção `config` → documento `practice_of_the_week`.
+3. Editar o campo `text` diretamente na interface (clique no valor → editar).
+4. Atualizar manualmente `updated_at` (usar o seletor de timestamp do
+   console, "definir para agora") e `updated_by` (o e-mail/uid do Head).
+5. Salvar — a mudança fica disponível para o app imediatamente (leitura
+   pública direta do Firestore, sem cache de servidor).
 
-Sem necessidade de papéis/permissões granulares no MVP (admin único ou poucos
-admins com o mesmo nível de acesso), conforme já definido em
-`UX-ARCHITECTURE.md`.
+**Adicionar um novo item (Orações/Músicas/Textos):**
+1. Firebase Console → **Storage** → navegar/criar a pasta
+   `items/{category}/` (ex. `items/oracoes/`) → **Fazer upload de arquivo**,
+   selecionar o PDF/imagem/áudio.
+2. Após o upload, clicar no arquivo → copiar o **URL de download** exibido no
+   console (ou gerar um "Get download URL" pela própria tela de detalhes do
+   arquivo).
+3. Firebase Console → **Firestore Database** → coleção `items` → **Adicionar
+   documento** (ID automático ou definido manualmente).
+4. Preencher os campos conforme o modelo da seção 2.2: `title`, `description`
+   (opcional), `category` (`oracoes`/`musicas`/`textos`), `file_url` (colado
+   do passo 2), `file_type`, `mime_type`, `file_size_bytes` (visível na tela
+   de detalhes do arquivo no Storage), `order` (número para posição na
+   lista), `created_at`/`updated_at` (definir para agora), `created_by` (uid
+   do Head), `published: true`.
+5. Salvar — o item aparece no app na próxima leitura da lista.
+
+**Editar ou remover um item:** mesma tela do Firestore — editar campos
+diretamente, ou apagar o documento (e, separadamente, apagar o arquivo
+correspondente no Storage para não deixar órfão).
+
+### 4.2 Custo desta abordagem
+
+Uso do Firebase Console em si é sempre gratuito. O volume de leitura/escrita/
+armazenamento gerado por um administrador único editando ocasionalmente fica
+muito abaixo dos limites do **plano Spark (free tier)**: Firestore (1 GiB de
+armazenamento, 50 mil leituras/dia, 20 mil escritas/dia) e Storage (5 GB,
+1 GB/dia de download) — ver seção 6.6 para o detalhamento de custo completo
+do projeto.
+
+### 4.3 Trade-off sacrificado
+
+Perde-se: validação de formato de dado no momento da digitação (o console não
+impede um `category` com valor errado, por exemplo — só a Security Rule
+de leitura filtra por categorias válidas do lado do app), preview de mídia
+antes de publicar, e uma UI mais amigável para quem não está confortável
+navegando o console técnico do Firebase. Aceitável porque o único operador é
+o Head, tecnicamente capaz de seguir o guia acima, e o volume de edição é
+baixo (esporádico, não um fluxo de trabalho diário de múltiplas pessoas).
 
 ---
 
@@ -282,16 +327,32 @@ Fluxo:
    `{ token, platform: "ios" | "android" }`, salvo na coleção `devices`
    (Firestore), com `created_at`/`last_seen_at` para permitir limpeza de
    tokens inativos.
-5. **Disparo de notificação** — dois gatilhos possíveis:
-   - **Manual:** admin usa o botão no painel (seção 4.4), que chama uma
-     Cloud Function `sendNotification` — busca tokens ativos na coleção
-     `devices` e envia via Firebase Admin SDK (`admin.messaging()`), que
-     encaminha para FCM → APNs (iOS) ou diretamente ao Android (FCM
-     nativo).
-   - **Automático (opcional, pós-MVP):** trigger no Firestore
-     (`onUpdate` de `practice_of_the_week` ou `onCreate` de `items`) chama a
-     mesma função de envio — a decidir com o Head se é desejado (evita
-     spam; alinhar com voice & tone "nunca urgência artificial").
+5. **Disparo de notificação — única Cloud Function realmente necessária no
+   escopo atual.** Enviar push via Firebase Admin SDK (`admin.messaging()`)
+   precisa rodar em ambiente de servidor (não é possível fazer isso
+   diretamente do client por segurança do Firebase — a credencial de Admin
+   SDK nunca deve estar no app/console do navegador). Por isso, ao contrário
+   do painel de admin (seção 4) e do CRUD de conteúdo (que o console resolve
+   sem código), o disparo de notificação exige uma Cloud Function `sendPush`:
+   busca tokens ativos na coleção `devices` e envia via
+   `admin.messaging().sendEachForMulticast(...)`, encaminhando para FCM →
+   APNs (iOS) ou diretamente ao Android. É a **única** função necessária
+   neste escopo — não há mais necessidade de Cloud Functions para CRUD de
+   admin, validação de upload ou App Check/rate limiting (ver seção 6).
+   - **Como o Head dispara manualmente:** Firebase Console → **Functions** →
+     selecionar `sendPush` → aba **Testar função** (ou "Testing") → informar
+     o payload JSON de teste (ex. `{ "title": "Nova Prática da Semana",
+     "body": "Confira a atualização desta semana" }`) → **Testar**. Não é
+     necessário nenhuma UI própria; o próprio console do Firebase serve como
+     "botão de disparo". Alternativa igualmente simples: um script Node curto
+     rodado localmente pelo Head (`node scripts/send-push.js`) usando o
+     Admin SDK autenticado com uma chave de serviço guardada fora do
+     repositório.
+   - **Automático (opcional, futuro, não necessário hoje):** trigger no
+     Firestore (`onUpdate` de `practice_of_the_week` ou `onCreate` de
+     `items`) chamando a mesma função de envio — descartado por ora: para um
+     grupo fechado pequeno, o disparo manual é suficiente e evita
+     complexidade adicional; reavaliar se o volume de atualizações crescer.
 6. FCM entrega a notificação ao dispositivo (via APNs no iOS, nativamente no
    Android); app trata o toque na notificação com deep link (rotas já
    previstas em `UX-ARCHITECTURE.md`: `/`, `/mensageiros/oracoes`, etc.).
@@ -311,10 +372,23 @@ implementação em produção, com decisão final registrada pelo Head em
 
 ## 6. Segurança
 
-### 6.1 Regras de acesso (Firestore Security Rules — esboço)
+### 6.1 Regras de acesso (Firestore Security Rules — revisado)
+
+**Mudança em relação à versão anterior:** a auditoria de deploy
+(`docs/DEPLOY-READINESS-AUDIT.md`) reprovou a regra original de `devices`
+(`allow create, update: if true`) por permitir escrita pública sem nenhuma
+validação — qualquer pessoa com a config pública do Firebase (que é sempre
+pública por design em apps client-side) poderia inundar a coleção com
+documentos arbitrários. Mesmo em escopo fechado essa brecha continua real e é
+barata de fechar, então **não foi reintroduzida**. A correção escolhida é a
+mais simples possível que ainda resolve o problema: **autenticação anônima do
+Firebase** (`signInAnonymously()`, chamada automaticamente pelo app ao abrir,
+sem exigir login/senha do usuário) antes de qualquer escrita em `devices`.
+Isso troca uma Cloud Function completa com rate limiting/App Check por uma
+troca de uma linha na regra — `if true` vira `if request.auth != null`.
 
 ```
-// firestore.rules (esboço, a validar por security-privacy antes de deploy)
+// firestore.rules (revisado — validar no emulador antes de deploy)
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -333,38 +407,73 @@ service cloud.firestore {
 
     match /devices/{deviceId} {
       allow read: if false;                // nunca lido pelo cliente
-      allow create, update: if true;       // registro de token (ver nota)
+      allow create, update: if request.auth != null
+                   && request.resource.data.keys().hasOnly(['token', 'platform', 'created_at', 'last_seen_at'])
+                   && request.resource.data.platform in ['ios', 'android'];
       allow delete: if request.auth != null && request.auth.token.admin == true;
     }
   }
 }
 ```
 
-Nota: a escrita pública em `devices` (registro de token) deve ser limitada
-por Cloud Function (não Firestore direto) para permitir validação de
-formato do token e rate limiting — ajustar antes de produção com
-`security-privacy`.
+**O que o app precisa mudar:** ao inicializar, chamar
+`firebase.auth().signInAnonymously()` antes de tentar escrever em `devices`.
+Isso é gratuito e não pede nenhuma informação do usuário — apenas gera um
+`uid` anônimo que a regra usa para exigir `request.auth != null`.
 
-### 6.2 Validação de upload
+**Avaliação de suficiência / trade-off:** isso fecha a brecha de escrita
+totalmente pública (bots/scripts genéricos não autenticados não conseguem
+mais escrever), e a validação de `keys().hasOnly(...)` e `platform in
+[...]` bloqueia payloads malformados — cobrindo a maior parte do risco
+prático para um grupo fechado pequeno. O que **não** cobre, e é aceito como
+trade-off consciente neste escopo: um usuário autenticado anonimamente ainda
+pode, em teoria, escrever repetidamente (não há rate limiting por uid/IP) —
+mitigação completa disso exigiria a Cloud Function com rate limiting que a
+auditoria original propôs. Para uso pessoal/grupo fechado (superfície de
+ataque pequena, sem divulgação pública do app), esse risco residual é
+considerado aceitável; se o app crescer para distribuição mais ampla,
+reintroduzir rate limiting server-side antes disso.
 
-- **Tipo MIME:** validado tanto no client (input `accept`) quanto no
-  servidor (Cloud Function trigger, ver 3.3) — nunca confiar apenas na
-  extensão do arquivo ou no MIME reportado pelo client sem checagem
-  server-side.
-- **Tamanho máximo:** 20 MB (PDF/imagem) / 50 MB (áudio), configurável via
-  variável de ambiente da Cloud Function — rejeitar e apagar arquivos que
-  excedam o limite.
-- **Nome de arquivo:** sanitizado (sem caracteres especiais/paths), renomeado
-  para UUID no Storage para evitar colisão e enumeração.
+### 6.1.1 App Check — não necessário no escopo atual
 
-### 6.3 Rate limiting básico
+A versão anterior deste documento recomendava App Check nas Cloud Functions
+públicas (seção antiga 6.3). Com a redução a uma única Cloud Function
+disparada manualmente pelo próprio Head via console (seção 5), e sem mais
+nenhuma função HTTPS pública exposta a clientes não confiáveis, App Check
+deixa de ser necessário — não há mais uma função pública recebendo tráfego
+de app/admin desconhecido para proteger. Reavaliar se uma função pública for
+reintroduzida no futuro.
 
-- Cloud Functions HTTPS: usar App Check (Firebase) para garantir que
-  requisições ao painel admin/API vêm de clientes legítimos, mais
-  `express-rate-limit` (ou equivalente) por IP nas funções expostas
-  publicamente (ex. registro de device token), para mitigar abuso.
-- Firestore Security Rules já limitam escrita a usuários admin autenticados,
-  reduzindo superfície de abuso na maior parte das operações.
+### 6.2 Validação de upload (revisado)
+
+Sem Cloud Function de validação automática (ver 3.3) — a única pessoa capaz
+de fazer upload é o Head, autenticado como admin via Storage Security Rules
+(equivalentes às do Firestore: leitura pública de arquivo de item publicado,
+escrita restrita a `request.auth.token.admin == true`). Boas práticas que
+continuam recomendadas, agora como checklist manual do próprio Head ao
+publicar (não mais imposição automática de servidor):
+- Preferir os tipos MIME já listados na seção 3.3.
+- Evitar arquivos muito acima de 20 MB (PDF/imagem) / 50 MB (áudio) para não
+  aproximar do limite do free tier de Storage (seção 6.6).
+- Não é necessário sanitizar nome de arquivo manualmente — o Storage aceita
+  qualquer nome, mas usar nomes simples (sem acentos/espaços) evita
+  problemas de URL.
+
+### 6.3 Rate limiting — reavaliado como desnecessário no escopo atual
+
+A recomendação anterior de App Check + `express-rate-limit` nas Cloud
+Functions públicas foi desenhada para um produto público em escala, com
+volume de tráfego desconhecido e superfície de ataque grande. Neste escopo:
+- Não há mais Cloud Functions HTTPS públicas de CRUD (seção 3.2) — o único
+  ponto de escrita programática de terceiro é `devices`, agora protegido por
+  autenticação anônima obrigatória (seção 6.1), o que já eleva o custo de
+  abuso trivial (spam anônimo em massa) sem exigir infraestrutura extra.
+- A única Cloud Function que resta (`sendPush`, seção 5) é disparada
+  manualmente pelo próprio Head via console — não está exposta como endpoint
+  público que precise de rate limiting.
+- Rate limiting por uid/IP em `devices` fica como item de mitigação futura
+  (não implementado agora, ver trade-off na seção 6.1) — reavaliar se o
+  grupo fechado crescer significativamente ou se houver evidência de abuso.
 
 ### 6.4 Autenticação de admin
 
@@ -383,63 +492,105 @@ formato do token e rate limiting — ajustar antes de produção com
 - Cloud Functions: timeout configurado, retry idempotente para envio de
   push (tratar tokens inválidos sem falhar o lote inteiro), e log
   estruturado de erros (Cloud Logging) para diagnóstico.
-- Nenhum ponto único de escrita sem tratamento de erro — toda mutação no
-  painel admin deve mostrar estado de sucesso/erro claro (nunca "silencioso").
+- Nenhum ponto único de escrita sem tratamento de erro — toda mutação
+  (edição direta no console, ou envio de push) deve deixar um estado
+  verificável (o próprio console mostra sucesso/erro da escrita; logs de
+  execução da Cloud Function `sendPush` ficam no Cloud Logging).
+
+### 6.6 Custo esperado (honesto, revisado para o escopo fechado)
+
+- **Firestore, Storage, Auth (inclusive anônima), Cloud Messaging:** cobertos
+  integralmente pelo **plano Spark (free tier)** do Firebase para o volume de
+  uso esperado (um administrador, um grupo fechado pequeno de leitores,
+  poucos itens de conteúdo, uploads esporádicos). Não é necessário cartão de
+  crédito nem upgrade de plano só para essas peças.
+- **Cloud Functions — exceção honesta:** Cloud Functions (2ª geração, a
+  versão atual do produto) **exige o plano Blaze (pay-as-you-go)**, o que
+  tecnicamente exige cadastrar um cartão de crédito no projeto GCP, mesmo
+  que o uso real fique dentro da faixa gratuita mensal do Blaze (que inclui
+  as mesmas cotas gratuitas do Spark, mais capacidade de faturar acima
+  delas). Para a única função deste escopo (`sendPush`, disparada
+  manualmente e raramente — da ordem de algumas vezes por semana ou menos),
+  o consumo fica muito abaixo da cota gratuita de invocações/computação do
+  Blaze na prática. **Custo mensal realista esperado: menos de US$1/mês**,
+  provavelmente US$0,00 na maioria dos meses — mas o Head deve estar ciente
+  de que a conta de faturamento fica ativa (cartão cadastrado) mesmo que a
+  fatura chegue a zero, e é recomendável configurar um alerta de orçamento
+  baixo (ex. US$1) no console GCP para ser avisado de qualquer anomalia.
+- **Hosting:** não é necessário neste escopo (sem painel web separado, seção
+  4), mas se for usado no futuro (ex. hospedar uma página estática qualquer),
+  também está coberto pelo free tier do Spark para volume baixo.
 
 ---
 
-## 7. Preparação para deploy — checklist
+## 7. Preparação para deploy — checklist (revisado para escopo fechado)
 
-Antes de produção (`devops-deploy`, estágio 06), confirmar que existe:
+Antes de disponibilizar o app ao grupo fechado (`devops-deploy`, estágio 06),
+confirmar que existe:
 
-- [ ] Projeto Firebase criado (ambiente `production`, separado de
-      `staging`/`dev` se houver).
-- [ ] Variáveis de ambiente/segredos configurados via Firebase Functions
-      config ou Secret Manager — **nunca commitados no repositório**
-      (chaves de API do Firebase client-side são públicas por design, mas
-      credenciais de Admin SDK e segredos de terceiros não são).
+- [ ] Projeto Firebase criado (um único ambiente é suficiente para este
+      escopo — separar `staging`/`dev` é opcional, não obrigatório, dado o
+      volume baixo e o único operador).
+- [ ] Chave de serviço do Admin SDK (usada só se o Head optar pelo script
+      local de disparo de push, seção 5) **nunca commitada no repositório**
+      — guardada fora do controle de versão (ex. variável de ambiente local
+      ou gerenciador de segredos pessoal). Chaves de API do Firebase
+      client-side no app são públicas por design e não precisam desse
+      cuidado.
 - [ ] Certificado/chave APNs configurada no console Firebase (Cloud
       Messaging → Apple app configuration) para push em iOS.
 - [ ] `google-services.json` (Android) e `GoogleService-Info.plist` (iOS)
-      gerados e integrados ao app pelo `mobile-crossplatform` — arquivos de
-      configuração, não segredo de servidor, mas ainda assim tratados
-      conforme política de distribuição do time.
-- [ ] Firestore Security Rules revisadas e testadas (emulador) antes do
-      deploy — gate de Integração exige "sem segredo no diff" e regras
-      testadas.
+      gerados e integrados ao app pelo `mobile-crossplatform`.
+- [ ] Firestore Security Rules revisadas e testadas (emulador) — incluindo a
+      regra de `devices` com autenticação anônima obrigatória (seção 6.1).
 - [ ] Firebase Storage Rules equivalentes às Firestore Rules (leitura
       pública de arquivo publicado, escrita só admin).
-- [ ] HTTPS obrigatório — padrão em Firebase Hosting/Functions, confirmar
-      que domínio customizado (se houver) tem certificado válido.
-- [ ] Backups: exportação periódica do Firestore (`gcloud firestore
-      export`) agendada (Cloud Scheduler + Function), destino em bucket
-      separado com retenção definida.
-- [ ] App Check habilitado nas Cloud Functions públicas antes do lançamento.
+- [ ] App inicializa `signInAnonymously()` antes de registrar o device token
+      (seção 6.1) — confirmar com `mobile-crossplatform`.
 - [ ] Limite de orçamento (budget alert) configurado no projeto GCP/Firebase
-      para evitar custo inesperado em caso de abuso.
-- [ ] Painel admin publicado em domínio/URL não indexado publicamente
-      (`noindex`), com HTTPS e autenticação obrigatória testada.
+      (ex. US$1) — mitigação simples para a exceção de custo da seção 6.6.
+- [ ] Lista de pessoas com acesso ao app (distribuição fechada — TestFlight
+      interno / Google Play testes internos / APK direto, conforme
+      `devops-deploy`) mantida e atualizada manualmente pelo Head.
 - [ ] Revisão final do pod de auditoria (`audit-code`, `security-privacy`)
       conforme gate de Auditoria — obrigatório antes deste checklist ser
-      considerado "pronto para deploy".
+      considerado "pronto para uso pelo grupo".
+
+Itens removidos desta versão do checklist por não se aplicarem ao escopo
+fechado atual: App Check em Cloud Functions públicas (não há mais nenhuma,
+seção 6.1.1), backup agendado via Cloud Scheduler (volume de dados pequeno
+e recriável manualmente pelo Head — exportação manual ocasional do Firestore
+é suficiente), painel admin publicado com `noindex` (não existe mais painel
+web, seção 4).
 
 ---
 
-## 8. Pendências para o Head / próximos passos
+## 8. Pendências para o Head / próximos passos (revisado — escopo fechado)
 
-1. **Registrar a decisão de stack** (seção 1) em `DECISIONS.md` — feito
-   junto a este documento.
+1. **Decisão de stack já registrada** (seção 1) em `DECISIONS.md`, assim como
+   a restrição de escopo de 2026-09-18 que motivou esta revisão.
 2. **Confirmar a subpágina "Textos"** com `ux-architect`, já que
    `UX-ARCHITECTURE.md` hoje só documenta Orações e Músicas — este
    documento assume Textos por instrução direta do Head na tarefa de admin,
    mas o fluxo de UX/wireframe dessa tela ainda não existe.
-3. **Consultar `security-privacy`** sobre o uso do device token de push
-   (seção 5) antes de implementação em produção — decisão final é do Head
-   conforme matriz DACI.
+3. **Uso do device token de push já avaliado** por `security-privacy`
+   (`docs/PRIVACY-REVIEW.md`) e aprovado com ressalvas pelo Head em
+   `DECISIONS.md` — os ajustes obrigatórios daquela decisão (rota de
+   exclusão de token, limpeza de tokens obsoletos, validação server-side do
+   payload) continuam válidos; a validação server-side agora é resolvida de
+   forma simplificada pela autenticação anônima + regra restrita (seção
+   6.1), em vez de Cloud Function completa.
 4. **Definir tela de configurações** no app para o toggle de notificações
    (não existe hoje no mapa de telas do MVP) — dependência para
    `ux-architect`/`ui-designer`/`mobile-crossplatform`.
-5. Após aprovação da stack pelo Head, `backend-integration` implementa o
-   projeto Firebase, Cloud Functions e Security Rules descritos aqui, e
-   entrega para o gate de Integração (contrato testado, sem segredo no
+5. **Implementação simplificada:** `backend-integration` cria o projeto
+   Firebase, configura Firestore/Storage Security Rules (seção 6.1) e a
+   única Cloud Function `sendPush` (seção 5) — sem painel de admin web, sem
+   CRUD via Cloud Function, sem App Check/rate limiting dedicado. Entrega
+   para o gate de Integração (regras testadas no emulador, sem segredo no
    diff).
+6. **Head assume o papel de operador de conteúdo** via Firebase Console
+   (guia na seção 4.1) — não há dependência de `frontend-multistack` para
+   construir/manter uma interface de admin neste escopo.
+7. **Orçamento:** configurar alerta de orçamento baixo (seção 6.6) ao
+   habilitar o plano Blaze necessário para a Cloud Function `sendPush`.
