@@ -1,8 +1,17 @@
 # Mensageiros da Paz — App Mobile
 
 App React Native (Expo) para iOS e Android. Decisão de stack registrada em
-`../DECISIONS.md` (2026-09-18): Expo managed workflow + EAS Build, consumindo
-Firebase (Firestore/Storage/FCM) conforme `../docs/BACKEND-ARCHITECTURE.md`.
+`../DECISIONS.md` (2026-09-18): Expo managed workflow, consumindo Firebase
+(Firestore/Storage/Auth) conforme `../docs/BACKEND-ARCHITECTURE.md`.
+
+**Push notifications (atualizado 2026-09-18):** por decisão do Head
+(`../DECISIONS.md`), push funciona hoje só em Android, custo zero, via
+**Expo Push Token** (`expo-notifications` + `Notifications.getExpoPushTokenAsync()`).
+Isso roda em Expo Go/managed workflow — **não é mais necessário** um
+development build nativo (EAS dev client) nem `@react-native-firebase/messaging`
+só para push, ao contrário de uma decisão anterior já superada. iOS via
+Expo Go não recebe notificações reais por enquanto; a tela de Configurações
+avisa isso ao usuário.
 
 ## Estrutura
 
@@ -14,18 +23,29 @@ app/
 │   ├── theme/tokens.ts         # paleta, tipografia, espaçamento (docs/CREATIVE-DIRECTION.md)
 │   ├── types/index.ts          # tipos de domínio (ContentItem, rotas etc.)
 │   ├── firebase/
-│   │   ├── config.ts           # inicialização do Firebase Web SDK (Firestore)
+│   │   ├── config.ts           # inicialização do Firebase Web SDK (Firestore/Auth)
 │   │   └── firestore.ts        # leituras: practice_of_the_week, items por categoria
 │   ├── navigation/RootNavigator.tsx   # Home -> Mensageiros -> Orações|Músicas|Textos
+│   │                                   # ícone de engrenagem no header de "Mensageiros" -> Settings
 │   ├── screens/
 │   │   ├── HomeScreen.tsx
 │   │   ├── MensageirosScreen.tsx
 │   │   ├── ContentListScreen.tsx      # reutilizada por Orações/Músicas/Textos (via param `category`)
 │   │   ├── ItemDetailScreen.tsx       # visualização de PDF/imagem/áudio
-│   │   └── SettingsScreen.tsx         # toggle de notificações (lacuna de UX, ver nota no arquivo)
+│   │   └── SettingsScreen.tsx         # toggle de notificações; acessada pelo ícone ⚙ em "Mensageiros"
 │   ├── components/              # ContentListItem, LoadingState, ErrorState, EmptyState
-│   └── notifications/pushNotifications.ts   # permissão + registro de token em `devices`
+│   └── notifications/pushNotifications.ts   # permissão + auth anônima + registro de Expo Push Token em `devices`
 ```
+
+## Acesso à tela de Configurações
+
+Não há tela de Configurações no mapa original de `../docs/UX-ARCHITECTURE.md`.
+Para não adicionar nada à Home (que deve permanecer minimalista, conforme
+`../docs/UX-ARCHITECTURE.md`/`../docs/CREATIVE-DIRECTION.md`), o acesso fica
+num ícone discreto de engrenagem (⚙) no cabeçalho da tela "Mensageiros"
+(`src/navigation/RootNavigator.tsx`, `headerRight`), que já tem um header
+nativo visível. Essa tela ainda não tem wireframe/aprovação formal de
+Design — ver nota em `src/screens/SettingsScreen.tsx`.
 
 ## Pré-requisitos
 
@@ -33,9 +53,10 @@ app/
 - npm ou yarn
 - Xcode (para simulador iOS, só em macOS) com Command Line Tools instalado
 - Android Studio (para emulador Android) com um AVD configurado
-- Conta Expo + EAS CLI (`npm i -g eas-cli`) — necessária porque o app usa
-  `@react-native-firebase/messaging` e `expo-notifications`, que exigem um
-  **development build nativo** (não funciona 100% no app Expo Go da loja).
+- Conta Expo com `projectId` configurado em `app.json` (`extra.eas.projectId`)
+  — necessário para `Notifications.getExpoPushTokenAsync()` funcionar, mesmo
+  em Expo Go/managed workflow (não é mais preciso EAS dev client nativo só
+  para push, ver nota acima).
 
 ## Instalação
 
@@ -51,45 +72,38 @@ cp .env.example .env
 1. **`.env`** (não commitar) — copiado de `.env.example`, com as chaves
    "web" do Firebase (Console Firebase → Configurações do projeto → Geral →
    seção "Seus apps" → app Web). Usadas pelo Firebase JS SDK para
-   Firestore/Storage (`src/firebase/config.ts`).
-2. **`GoogleService-Info.plist`** (iOS) — baixar do Console Firebase (app
-   iOS registrado) e colocar em `app/GoogleService-Info.plist`. Necessário
-   para push via `@react-native-firebase/messaging` e referenciado em
-   `app.json` (`ios.googleServicesFile`).
-3. **`google-services.json`** (Android) — baixar do Console Firebase (app
-   Android registrado) e colocar em `app/google-services.json`. Referenciado
-   em `app.json` (`android.googleServicesFile`).
+   Firestore/Storage/Auth (`src/firebase/config.ts`), incluindo a
+   autenticação anônima usada antes de escrever na coleção `devices`
+   (ver `src/notifications/pushNotifications.ts`).
+2. **`projectId` do EAS** (`app.json` → `extra.eas.projectId`) — necessário
+   para `Notifications.getExpoPushTokenAsync()` gerar um Expo Push Token
+   válido. Criar com `eas init` (conta Expo gratuita).
+3. **Firestore Security Rules** — habilitar autenticação anônima no
+   Console Firebase (Authentication → Sign-in method → Anônimo) e aplicar
+   a regra `allow create: if request.auth != null` na coleção `devices`,
+   conforme `../docs/BACKEND-ARCHITECTURE.md`.
 
-Nenhum desses três arquivos deve ser commitado com valores reais — todos
-estão no `.gitignore`. As chaves "web" do Firebase não são segredos de
-servidor (são públicas por design, protegidas pelas Security Rules), mas o
-time mantém a mesma política cautelosa de não versionar nenhuma delas.
+O `.env` não deve ser commitado com valores reais — está no `.gitignore`.
+As chaves "web" do Firebase não são segredos de servidor (são públicas por
+design, protegidas pelas Security Rules), mas o time mantém a mesma
+política cautelosa de não versionar essas chaves.
 
 ## Rodando localmente
 
-### Modo desenvolvimento rápido (sem push nativo, Expo Go)
-
-Funciona para Home, navegação, Firestore e telas de conteúdo — não registra
-token FCM real (o módulo de notificações usa um token Expo de
-desenvolvimento como placeholder, ver comentário em
-`src/notifications/pushNotifications.ts`).
+Com o `projectId` do EAS configurado (ver acima), o Expo Go já é suficiente
+— não há mais necessidade de development build nativo só para push:
 
 ```bash
 npm start
 # pressione "i" para abrir no simulador iOS, "a" para o emulador Android
+# ou escaneie o QR code com o app Expo Go num dispositivo físico
 ```
 
-### Modo completo (com push nativo via Firebase, recomendado antes de produção)
-
-Requer development build via EAS, pois `@react-native-firebase/messaging`
-tem módulo nativo que o Expo Go não inclui:
-
-```bash
-npx eas build --profile development --platform ios
-npx eas build --profile development --platform android
-# instale o build gerado no simulador/emulador ou dispositivo físico, depois:
-npm start
-```
+Push (Expo Push Token) só entrega notificações de fato em **Android**, via
+APK instalado diretamente no aparelho (build de produção/preview com
+`eas build --platform android`). Em iOS/Expo Go, o toggle de notificações
+fica desabilitado com um aviso na tela de Configurações — ver
+`src/notifications/pushNotifications.ts` (`isIOSPushUnavailable`).
 
 iOS simulator: `npm run ios` (requer Xcode instalado e simulador já criado).
 Android emulator: `npm run android` (requer Android Studio com um AVD
@@ -97,11 +111,12 @@ rodando, ou `emulator -avd <nome>` executado antes).
 
 ## O que falta para rodar de ponta a ponta
 
-- Chaves reais do Firebase (`.env`, `GoogleService-Info.plist`,
-  `google-services.json`) — projeto Firebase ainda não foi provisionado
-  neste repositório (fora do escopo deste subagente).
+- Chaves reais do Firebase (`.env`) e habilitação de autenticação anônima
+  no Console Firebase — projeto Firebase ainda não foi provisionado neste
+  repositório (fora do escopo deste subagente).
 - Projeto EAS (`eas.json` + `projectId` em `app.json`) — criar com
-  `eas init` quando o time tiver conta Expo/EAS configurada.
+  `eas init` quando o time tiver conta Expo/EAS configurada. Necessário
+  para o Expo Push Token, mesmo sem build nativo.
 - Assets finais de marca (`assets/icon.png`, `splash.png`,
   `adaptive-icon.png`, `notification-icon.png`) — hoje há só um
   `assets/.gitkeep`; aguardando entregável de `ui-designer`.

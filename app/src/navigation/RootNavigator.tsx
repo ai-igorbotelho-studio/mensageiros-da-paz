@@ -1,7 +1,8 @@
 import React from "react";
+import { Pressable, Text } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { colors, fonts } from "@/theme/tokens";
+import { colors, fonts, minTouchSize } from "@/theme/tokens";
 import { HomeScreen } from "@/screens/HomeScreen";
 import { MensageirosScreen } from "@/screens/MensageirosScreen";
 import { ContentListScreen } from "@/screens/ContentListScreen";
@@ -38,7 +39,31 @@ export function RootNavigator() {
         <Stack.Screen
           name="Mensageiros"
           component={MensageirosScreen}
-          options={{ title: "Mensageiros" }}
+          options={({ navigation }) => ({
+            title: "Mensageiros",
+            // Ponto de entrada único para Configurações: um ícone discreto
+            // no cabeçalho de "Mensageiros" (não na Home, que permanece
+            // minimalista conforme docs/UX-ARCHITECTURE.md/CREATIVE-DIRECTION.md).
+            // "Mensageiros" já tem cabeçalho nativo visível, então o ícone
+            // não introduz nenhuma superfície visual nova nem compete com
+            // o conteúdo da Home.
+            headerRight: () => (
+              <Pressable
+                onPress={() => navigation.navigate("Settings")}
+                hitSlop={8}
+                style={{
+                  minWidth: minTouchSize,
+                  minHeight: minTouchSize,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Configurações"
+              >
+                <Text style={{ fontSize: 20, color: colors.primary }}>⚙</Text>
+              </Pressable>
+            ),
+          })}
         />
         <Stack.Screen
           name="ContentList"

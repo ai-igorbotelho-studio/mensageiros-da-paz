@@ -1,14 +1,20 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 /**
- * Config do Firebase Web SDK — usado para Firestore/Storage.
+ * Config do Firebase Web SDK — usado para Firestore/Storage/Auth.
  * As chaves vêm de variáveis de ambiente públicas (EXPO_PUBLIC_*), conforme
  * app/.env.example. Nunca commitar um .env real com valores reais.
  *
- * Push (FCM) usa @react-native-firebase/messaging separadamente, que lê a
- * configuração nativa de GoogleService-Info.plist / google-services.json
- * (não deste arquivo) — ver app/README.md.
+ * Push usa `expo-notifications` (Expo Push Token), não
+ * @react-native-firebase/messaging — ver DECISIONS.md (2026-09-18, "Push
+ * notifications: só Android por enquanto") e app/README.md. Funciona em
+ * Expo Go/managed workflow, sem exigir build nativo.
+ *
+ * `getAuth` é usado para autenticação anônima (`signInAnonymously`) antes
+ * de escrever na coleção `devices`, conforme docs/BACKEND-ARCHITECTURE.md
+ * (regra `allow create: if request.auth != null`).
  */
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -24,3 +30,4 @@ export const firebaseApp = getApps().length
   : initializeApp(firebaseConfig);
 
 export const db = getFirestore(firebaseApp);
+export const auth = getAuth(firebaseApp);

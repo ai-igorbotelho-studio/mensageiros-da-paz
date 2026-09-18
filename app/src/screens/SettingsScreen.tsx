@@ -4,6 +4,7 @@ import { colors, fonts, spacing } from "@/theme/tokens";
 import {
   disableNotifications,
   enableNotifications,
+  isIOSPushUnavailable,
   isNotificationsEnabled,
 } from "@/notifications/pushNotifications";
 
@@ -12,22 +13,22 @@ import {
  * docs/UX-ARCHITECTURE.md (que lista só Home/Mensageiros/Orações/Músicas
  * e trata "configurações" como fora de escopo do MVP). Ela existe aqui
  * apenas para abrigar o toggle de notificações exigido por
- * docs/BACKEND-ARCHITECTURE.md seção 5 (item 1: "hoje o MVP não tem tela
- * de configurações, então esta feature exige uma nova superfície de UI
- * mínima").
+ * docs/BACKEND-ARCHITECTURE.md seção 5.
  *
- * LACUNA registrada: esta tela não tem wireframe/aprovação de
+ * Ponto de entrada: ícone de engrenagem no cabeçalho da tela "Mensageiros"
+ * (ver app/src/navigation/RootNavigator.tsx). A Home permanece minimalista
+ * (Prática da Semana + botão MENSAGEIROS), sem nenhum elemento novo.
+ *
+ * LACUNA registrada: esta tela não tem wireframe/aprovação formal de
  * `ux-architect`/`ui-designer`. Está implementada com o mínimo de
  * fricção visual possível, seguindo os tokens de design, mas deve ser
- * revisada por Design antes do gate de Auditoria. Por ora, não há um
- * ponto de entrada de navegação para esta tela nas 5 telas principais —
- * cabe ao Head/UX decidir onde expor o acesso (ex. ícone discreto na
- * Home, ou modal acionado só quando o app pedir permissão de push).
+ * revisada por Design antes do gate de Auditoria.
  */
 export function SettingsScreen() {
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const pushUnavailable = isIOSPushUnavailable();
 
   useEffect(() => {
     isNotificationsEnabled().then((value) => {
@@ -70,12 +71,20 @@ export function SettingsScreen() {
         <Switch
           value={enabled}
           onValueChange={handleToggle}
-          disabled={loading}
+          disabled={loading || pushUnavailable}
           trackColor={{ false: colors.textSecondary, true: colors.primaryLight }}
           thumbColor={enabled ? colors.primary : colors.surface}
           accessibilityLabel="Ativar notificações"
         />
       </View>
+      {pushUnavailable ? (
+        <Text style={styles.notice}>
+          No iPhone, por enquanto, as notificações ainda não estão
+          disponíveis por aqui — estamos usando um caminho mais simples e
+          sem custo, pensado para Android primeiro. Assim que isso mudar,
+          avisamos você.
+        </Text>
+      ) : null}
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
     </View>
   );
@@ -122,5 +131,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.accent,
     marginTop: spacing.md,
+  },
+  notice: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+    lineHeight: 20,
   },
 });

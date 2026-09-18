@@ -15,15 +15,10 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "org.mensageirosdapaz.app",
-      "googleServicesFile": "./GoogleService-Info.plist",
-      "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
-      }
+      "bundleIdentifier": "org.mensageirosdapaz.app"
     },
     "android": {
       "package": "org.mensageirosdapaz.app",
-      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F7F3EC"
@@ -31,8 +26,6 @@
       "permissions": ["POST_NOTIFICATIONS"]
     },
     "plugins": [
-      "@react-native-firebase/app",
-      "@react-native-firebase/messaging",
       [
         "expo-notifications",
         {
