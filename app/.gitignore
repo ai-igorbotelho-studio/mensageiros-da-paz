@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.log
+.env
+GoogleService-Info.plist
+google-services.json
+.DS_Store
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
