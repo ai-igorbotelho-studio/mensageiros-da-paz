@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
@@ -57,6 +57,12 @@ export function HomeScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
+        <Image
+          source={require("../../assets/branding/chama-tripla.png")}
+          style={styles.emblem}
+          resizeMode="contain"
+          accessibilityLabel="Emblema da Chama Tripla"
+        />
         <Text style={styles.label}>Prática da semana</Text>
         <Text style={styles.practiceText}>
           {text || "Nenhuma prática publicada no momento."}
@@ -88,6 +94,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: "center",
+  },
+  emblem: {
+    width: 96,
+    height: 149,
+    alignSelf: "center",
+    marginBottom: spacing.xl,
   },
   label: {
     fontFamily: fonts.bodyFallback,
