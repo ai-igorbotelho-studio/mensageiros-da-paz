@@ -79,10 +79,10 @@ export function SettingsScreen() {
       </View>
       {pushUnavailable ? (
         <Text style={styles.notice}>
-          No iPhone, por enquanto, as notificações ainda não estão
-          disponíveis por aqui — estamos usando um caminho mais simples e
-          sem custo, pensado para Android primeiro. Assim que isso mudar,
-          avisamos você.
+          Por enquanto, as notificações ainda não estão disponíveis por
+          aqui — estamos usando um caminho mais simples e sem custo,
+          pensado para Android primeiro. Assim que isso mudar, avisamos
+          você.
         </Text>
       ) : null}
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}

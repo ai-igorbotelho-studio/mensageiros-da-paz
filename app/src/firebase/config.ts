@@ -25,9 +25,24 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-export const firebaseApp = getApps().length
-  ? getApp()
-  : initializeApp(firebaseConfig);
+/**
+ * `EXPO_PUBLIC_FIREBASE_API_KEY` etc. ainda não existem (nenhum projeto
+ * Firebase real foi criado — ver checklist em docs/BACKEND-ARCHITECTURE.md
+ * seção 7). Sem essa guarda, `initializeApp` lança uma exceção síncrona no
+ * carregamento do módulo (antes de qualquer componente React montar),
+ * derrubando o bundle inteiro e deixando a tela em branco sem nenhum erro
+ * visível ao usuário. Com a guarda, o app carrega normalmente e cada tela
+ * mostra seu próprio estado de erro já implementado (ErrorState), porque as
+ * funções de `firestore.ts`/`pushNotifications.ts` rejeitam com um erro
+ * comum, capturado pelo try/catch que já existe em cada tela.
+ */
+export const firebaseReady = Boolean(firebaseConfig.apiKey);
 
-export const db = getFirestore(firebaseApp);
-export const auth = getAuth(firebaseApp);
+let app: ReturnType<typeof initializeApp> | null = null;
+if (firebaseReady) {
+  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+}
+
+export const firebaseApp = app;
+export const db = app ? getFirestore(app) : null;
+export const auth = app ? getAuth(app) : null;

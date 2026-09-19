@@ -3,11 +3,17 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import type { ContentItem } from "@/types";
 
-const FILE_TYPE_LABEL: Record<ContentItem["fileType"], string> = {
+const FILE_TYPE_LABEL: Record<NonNullable<ContentItem["fileType"]>, string> = {
   pdf: "PDF",
   image: "Imagem",
   audio: "Áudio",
 };
+
+function badgeLabel(item: ContentItem): string {
+  if (item.source === "spotify") return "Spotify";
+  if (item.fileType) return FILE_TYPE_LABEL[item.fileType];
+  return "";
+}
 
 interface Props {
   item: ContentItem;
@@ -15,12 +21,13 @@ interface Props {
 }
 
 export function ContentListItem({ item, onPress }: Props) {
+  const badge = badgeLabel(item);
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={() => onPress(item)}
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}, ${FILE_TYPE_LABEL[item.fileType]}`}
+      accessibilityLabel={`${item.title}, ${badge}`}
     >
       <View style={styles.textColumn}>
         <Text style={styles.title}>{item.title}</Text>
@@ -30,7 +37,7 @@ export function ContentListItem({ item, onPress }: Props) {
           </Text>
         ) : null}
       </View>
-      <Text style={styles.badge}>{FILE_TYPE_LABEL[item.fileType]}</Text>
+      {badge ? <Text style={styles.badge}>{badge}</Text> : null}
     </Pressable>
   );
 }

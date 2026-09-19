@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { collection, addDoc, doc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { signInAnonymously } from "firebase/auth";
-import { auth, db } from "@/firebase/config";
+import { auth, db, firebaseReady } from "@/firebase/config";
 
 /**
  * Fluxo ponta a ponta descrito em docs/BACKEND-ARCHITECTURE.md seção 5 e
@@ -38,6 +38,9 @@ import { auth, db } from "@/firebase/config";
  */
 
 async function ensureAnonymousAuth(): Promise<void> {
+  if (!firebaseReady || !auth) {
+    throw new Error("Firebase não configurado");
+  }
   if (!auth.currentUser) {
     await signInAnonymously(auth);
   }
@@ -47,13 +50,18 @@ const DEVICE_ID_KEY = "device_id";
 const NOTIFICATIONS_ENABLED_KEY = "notifications_enabled";
 const DEVICE_DOC_ID_KEY = "device_doc_id";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+// expo-notifications não tem suporte pleno a web; evitar registrar o
+// handler nessa plataforma (a versão web não usa push de qualquer forma —
+// ver DECISIONS.md, "Push notifications: só Android por enquanto").
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 async function getOrCreateDeviceId(): Promise<string> {
   let id = await AsyncStorage.getItem(DEVICE_ID_KEY);
@@ -71,11 +79,12 @@ export async function isNotificationsEnabled(): Promise<boolean> {
 
 /**
  * Push funciona hoje só em Android (ver DECISIONS.md, 2026-09-18). Em iOS
- * via Expo Go não há entrega real de notificação — a UI deve avisar isso
- * de forma gentil em vez de deixar o toggle falhar silenciosamente.
+ * via Expo Go e na versão web não há entrega real de notificação — a UI
+ * deve avisar isso de forma gentil em vez de deixar o toggle falhar
+ * silenciosamente.
  */
 export function isIOSPushUnavailable(): boolean {
-  return Platform.OS === "ios";
+  return Platform.OS !== "android";
 }
 
 export async function enableNotifications(): Promise<
@@ -101,7 +110,7 @@ export async function enableNotifications(): Promise<
     await ensureAnonymousAuth();
 
     const deviceId = await getOrCreateDeviceId();
-    const docRef = await addDoc(collection(db, "devices"), {
+    const docRef = await addDoc(collection(db!, "devices"), {
       token: expoPushToken,
       platform: Platform.OS,
       device_id: deviceId,
@@ -122,7 +131,7 @@ export async function disableNotifications(): Promise<void> {
   if (docId) {
     try {
       await ensureAnonymousAuth();
-      await deleteDoc(doc(db, "devices", docId));
+      await deleteDoc(doc(db!, "devices", docId));
     } catch {
       // Falha ao remover o token remotamente não deve travar o toggle local;
       // o job de limpeza periódica no backend cobre tokens órfãos
