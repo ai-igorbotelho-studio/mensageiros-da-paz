@@ -19,7 +19,13 @@ import {
   type User,
 } from "firebase/auth";
 import { db, auth, firebaseReady } from "./config";
-import type { ContentCategory, ContentItem, ContentSource, FileType } from "@/types";
+import type {
+  ContentCategory,
+  ContentItem,
+  ContentSource,
+  FileType,
+  StreamingProvider,
+} from "@/types";
 
 /**
  * Escrita autenticada para a tela /admin (app/src/screens/AdminScreen.tsx).
@@ -82,7 +88,8 @@ export async function adminListItemsByCategory(
       fileUrl: data.file_url ?? null,
       fileType: data.file_type ?? null,
       mimeType: data.mime_type ?? null,
-      spotifyUrl: data.spotify_url ?? null,
+      streamingProvider: data.streaming_provider ?? null,
+      streamingUrl: data.streaming_url ?? null,
       order: data.order ?? 0,
       createdAt: data.created_at?.toMillis?.() ?? null,
       published: !!data.published,
@@ -97,7 +104,8 @@ export interface ItemFormValues {
   source: ContentSource;
   fileUrl: string;
   fileType: FileType;
-  spotifyUrl: string;
+  streamingProvider: StreamingProvider;
+  streamingUrl: string;
   order: number;
   published: boolean;
 }
@@ -121,7 +129,8 @@ export async function adminCreateItem(values: ItemFormValues, adminEmail: string
     file_type: isUpload ? values.fileType : null,
     mime_type: isUpload ? mimeTypeFor(values.fileType) : null,
     file_size_bytes: null,
-    spotify_url: isUpload ? null : values.spotifyUrl,
+    streaming_provider: isUpload ? null : values.streamingProvider,
+    streaming_url: isUpload ? null : values.streamingUrl,
     order: values.order,
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
@@ -144,7 +153,8 @@ export async function adminUpdateItem(
     file_url: isUpload ? values.fileUrl : null,
     file_type: isUpload ? values.fileType : null,
     mime_type: isUpload ? mimeTypeFor(values.fileType) : null,
-    spotify_url: isUpload ? null : values.spotifyUrl,
+    streaming_provider: isUpload ? null : values.streamingProvider,
+    streaming_url: isUpload ? null : values.streamingUrl,
     order: values.order,
     updated_at: serverTimestamp(),
     published: values.published,

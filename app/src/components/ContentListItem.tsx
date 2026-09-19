@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
-import type { ContentItem } from "@/types";
+import type { ContentItem, StreamingProvider } from "@/types";
 
 const FILE_TYPE_LABEL: Record<NonNullable<ContentItem["fileType"]>, string> = {
   pdf: "PDF",
@@ -9,8 +9,18 @@ const FILE_TYPE_LABEL: Record<NonNullable<ContentItem["fileType"]>, string> = {
   audio: "Áudio",
 };
 
+const STREAMING_LABEL: Record<StreamingProvider, string> = {
+  spotify: "Spotify",
+  youtube: "YouTube Music",
+  soundcloud: "SoundCloud",
+  apple_music: "Apple Music",
+  other: "Streaming",
+};
+
 function badgeLabel(item: ContentItem): string {
-  if (item.source === "spotify") return "Spotify";
+  if (item.source === "streaming" && item.streamingProvider) {
+    return STREAMING_LABEL[item.streamingProvider];
+  }
   if (item.fileType) return FILE_TYPE_LABEL[item.fileType];
   return "";
 }

@@ -110,13 +110,18 @@ Documento único (sem histórico/versionamento no MVP, conforme já definido em
 
 ### 2.2 `items` (coleção, um documento por item de Orações/Músicas/Textos)
 
-> **Revisão 2026-09-19 — conteúdo misto em Músicas.** Conforme decisão do
-> Head em `DECISIONS.md` ("Músicas: conteúdo misto — upload próprio +
-> Spotify"), um item pode ser um **arquivo próprio** (upload no Firebase
-> Storage, tocado pelo player nativo do app) ou um **link do Spotify**
-> (abre no app/site do Spotify, sem player embutido). O campo `source`
-> discrimina os dois casos; campos de arquivo e campos de Spotify são
-> mutuamente exclusivos.
+> **Revisão 2026-09-19 — conteúdo misto em Músicas + múltiplas
+> plataformas de streaming + sem Firebase Storage.** Conforme decisões
+> do Head em `DECISIONS.md` ("Músicas: conteúdo misto", "Sem Firebase
+> Storage", "Streaming: suporte a múltiplas plataformas de música"), um
+> item pode ser um **arquivo com link direto** (`source: "upload"` —
+> qualquer provedor de cloud com link público: Google Drive, Dropbox,
+> OneDrive, Cloudflare Pages, etc., não mais Firebase Storage) ou um
+> **link de streaming de música** (`source: "streaming"` — Spotify,
+> YouTube Music, SoundCloud, Apple Music ou outra, campo
+> `streaming_provider`). Só o Spotify tem player embutido no app; as
+> demais abrem externamente. O campo `source` discrimina os dois casos;
+> campos de arquivo e campos de streaming são mutuamente exclusivos.
 
 ```
 items/{itemId}
@@ -124,16 +129,17 @@ items/{itemId}
   "title": string,                 // obrigatório
   "description": string | null,    // opcional, texto curto de apoio (ex. "Artista · Ano")
   "category": "oracoes" | "musicas" | "textos" | "livros",  // obrigatório
-  "source": "upload" | "spotify",  // obrigatório — discrimina os campos abaixo
+  "source": "upload" | "streaming",  // obrigatório — discrimina os campos abaixo
 
   // presentes somente quando source == "upload":
-  "file_url": string | null,        // URL do arquivo no Firebase Storage
-  "file_type": "pdf" | "image" | "audio" | null,  // derivado do MIME no upload
+  "file_url": string | null,        // link direto — qualquer provedor de cloud (Drive, Dropbox, OneDrive, Cloudflare Pages, etc.)
+  "file_type": "pdf" | "image" | "audio" | null,
   "mime_type": string | null,       // ex. "application/pdf", "audio/mpeg"
-  "file_size_bytes": number | null,
+  "file_size_bytes": number | null, // não preenchido automaticamente (sem upload/Storage) — deixar null
 
-  // presente somente quando source == "spotify":
-  "spotify_url": string | null,     // ex. "https://open.spotify.com/track/{id}"
+  // presentes somente quando source == "streaming":
+  "streaming_provider": "spotify" | "youtube" | "soundcloud" | "apple_music" | "other" | null,
+  "streaming_url": string | null,   // ex. "https://open.spotify.com/track/{id}"
 
   "order": number,                  // define ordem de exibição dentro da categoria
   "created_at": timestamp,
@@ -143,16 +149,18 @@ items/{itemId}
 }
 ```
 
-`source == "spotify"` é hoje só aplicável a `category == "musicas"` (não há
-caso de uso para Orações/Textos apontarem a uma faixa do Spotify) — a
-Security Rule (seção 6.1) não impõe essa restrição automaticamente, é uma
-convenção que o Head deve seguir ao cadastrar. `mobile-crossplatform` deve
-renderizar o item de forma diferente conforme `source`: item `upload` abre
-o player nativo (como já implementado); item `spotify` abre o link externo
-(`Linking.openURL(spotify_url)`) — abrir o app do Spotify se instalado, ou
-o navegador/`open.spotify.com` como fallback, sem tentar embutir um player
-Spotify dentro do app (exigiria SDK/autenticação OAuth do Spotify, fora do
-escopo atual).
+`source == "streaming"` é hoje só aplicável a `category == "musicas"`
+(não há caso de uso para Orações/Textos/Livros apontarem a uma faixa de
+streaming) — a Security Rule (seção 6.1) não impõe essa restrição
+automaticamente, é uma convenção que o Head deve seguir ao cadastrar.
+`mobile-crossplatform` renderiza o item de forma diferente conforme
+`source`/`streaming_provider`: item `upload` abre o player nativo (áudio)
+ou visualização (imagem/PDF); item `streaming` com `streaming_provider ==
+"spotify"` embute o player do Spotify (`SpotifyEmbed`, iframe/WebView);
+qualquer outro `streaming_provider` abre o link externo
+(`Linking.openURL(streaming_url)`) com um botão "Abrir no {plataforma}" —
+embutir player de YouTube Music/SoundCloud/Apple Music exigiria SDK e
+autenticação próprios de cada plataforma, fora do escopo atual.
 
 Índice composto recomendado: `category` + `order` (ascendente) para listagem
 ordenada por subpágina — configurar em `firestore.indexes.json`.
@@ -347,21 +355,29 @@ existente) compensou o esforço.
    (definir para agora), `created_by` (uid do Head), `published: true`.
 5. Salvar — o item aparece no app na próxima leitura da lista.
 
-**Adicionar uma música do Spotify (só `category: "musicas"`):**
-1. No Spotify, copiar o link da faixa (Compartilhar → Copiar link da
-   música), formato `https://open.spotify.com/track/{id}`.
+**Adicionar uma música de streaming (só `category: "musicas"`):**
+1. Na plataforma escolhida (Spotify, YouTube Music, SoundCloud, Apple
+   Music), copiar o link da faixa/álbum/playlist.
 2. Firebase Console → **Firestore Database** → coleção `items` → **Adicionar
    documento**.
 3. Preencher: `title`, `description` (ex. "Artista · Ano"),
-   `category: "musicas"`, `source: "spotify"`, `spotify_url` (link copiado
-   no passo 1), `file_url`/`file_type`/`mime_type`/`file_size_bytes: null`,
-   `order`, `created_at`/`updated_at`, `created_by`, `published: true`.
-4. Salvar — não há upload de arquivo nem Storage envolvido nesse caso; o
-   app abre o link externo do Spotify ao tocar no item.
+   `category: "musicas"`, `source: "streaming"`, `streaming_provider`
+   (`spotify`/`youtube`/`soundcloud`/`apple_music`/`other`), `streaming_url`
+   (link copiado no passo 1), `file_url`/`file_type`/`mime_type`/
+   `file_size_bytes: null`, `order`, `created_at`/`updated_at`,
+   `created_by`, `published: true`.
+4. Salvar — não há arquivo envolvido nesse caso; o app embute o player
+   (se `streaming_provider == "spotify"`) ou abre o link externo (demais
+   plataformas) ao tocar no item.
 
 **Editar ou remover um item:** mesma tela do Firestore — editar campos
-diretamente, ou apagar o documento (e, separadamente, apagar o arquivo
-correspondente no Storage para não deixar órfão).
+diretamente, ou apagar o documento. Como não há mais Firebase Storage, não
+há arquivo para apagar separadamente — só o link fica órfão (nenhuma
+limpeza necessária no provedor externo).
+
+> Pelo painel `/admin` (seção 4, revisão do topo), os passos acima ficam
+> mais simples: formulário com os mesmos campos, sem precisar navegar o
+> Firestore diretamente.
 
 ### 4.2 Custo desta abordagem
 

@@ -22,7 +22,13 @@ import {
   watchAdminAuth,
   type ItemFormValues,
 } from "@/firebase/admin";
-import type { ContentCategory, ContentItem, ContentSource, FileType } from "@/types";
+import type {
+  ContentCategory,
+  ContentItem,
+  ContentSource,
+  FileType,
+  StreamingProvider,
+} from "@/types";
 
 /**
  * Painel de admin dentro do próprio app (rota /admin na versão web),
@@ -33,8 +39,12 @@ import type { ContentCategory, ContentItem, ContentSource, FileType } from "@/ty
  * código-base React Native/Expo.
  *
  * Como não há Firebase Storage (ver DECISIONS.md, "Sem Firebase
- * Storage"), o campo de arquivo é um link colado pelo Head (Google Drive
- * para PDF, Cloudflare Pages para áudio próprio), não um upload real.
+ * Storage"), o campo de arquivo é um link colado pelo Head — de
+ * QUALQUER provedor de cloud com link direto (Google Drive, Dropbox,
+ * OneDrive, Cloudflare Pages, etc.), não um upload real. Música também
+ * aceita um link de plataforma de streaming (Spotify, YouTube Music,
+ * SoundCloud, Apple Music) em vez de arquivo — ver
+ * DECISIONS.md, "Streaming: suporte a múltiplas plataformas de música".
  */
 
 const CATEGORIES: ContentCategory[] = ["oracoes", "musicas", "textos", "livros"];
@@ -45,6 +55,21 @@ const CATEGORY_LABEL: Record<ContentCategory, string> = {
   livros: "Livros",
 };
 
+const STREAMING_PROVIDERS: StreamingProvider[] = [
+  "spotify",
+  "youtube",
+  "soundcloud",
+  "apple_music",
+  "other",
+];
+const STREAMING_PROVIDER_LABEL: Record<StreamingProvider, string> = {
+  spotify: "Spotify",
+  youtube: "YouTube Music",
+  soundcloud: "SoundCloud",
+  apple_music: "Apple Music",
+  other: "Outra plataforma",
+};
+
 const EMPTY_FORM: ItemFormValues = {
   title: "",
   description: "",
@@ -52,7 +77,8 @@ const EMPTY_FORM: ItemFormValues = {
   source: "upload",
   fileUrl: "",
   fileType: "pdf",
-  spotifyUrl: "",
+  streamingProvider: "spotify",
+  streamingUrl: "",
   order: 1,
   published: true,
 };
@@ -165,7 +191,8 @@ function AdminDashboard({ user }: { user: User }) {
       source: item.source,
       fileUrl: item.fileUrl ?? "",
       fileType: item.fileType ?? "pdf",
-      spotifyUrl: item.spotifyUrl ?? "",
+      streamingProvider: item.streamingProvider ?? "spotify",
+      streamingUrl: item.streamingUrl ?? "",
       order: item.order,
       published: item.published,
     });
@@ -183,11 +210,11 @@ function AdminDashboard({ user }: { user: User }) {
       return;
     }
     if (form.source === "upload" && !form.fileUrl.trim()) {
-      setFormError("Cole o link do arquivo (Drive/Cloudflare).");
+      setFormError("Cole o link do arquivo (Drive, Dropbox, OneDrive, Cloudflare, etc.).");
       return;
     }
-    if (form.source === "spotify" && !form.spotifyUrl.trim()) {
-      setFormError("Cole o link da faixa do Spotify.");
+    if (form.source === "streaming" && !form.streamingUrl.trim()) {
+      setFormError("Cole o link da faixa/plataforma de streaming.");
       return;
     }
     try {
@@ -279,7 +306,10 @@ function AdminDashboard({ user }: { user: User }) {
                 <Text style={styles.itemDescription}>{item.description}</Text>
               ) : null}
               <Text style={styles.itemMeta}>
-                {item.source === "spotify" ? "Spotify" : item.fileType?.toUpperCase()} · ordem {item.order}
+                {item.source === "streaming"
+                  ? STREAMING_PROVIDER_LABEL[item.streamingProvider ?? "other"]
+                  : item.fileType?.toUpperCase()}{" "}
+                · ordem {item.order}
               </Text>
             </View>
             <Pressable onPress={() => startEdit(item)} accessibilityRole="button">
@@ -332,7 +362,7 @@ function AdminDashboard({ user }: { user: User }) {
       </View>
 
       <View style={styles.categoryRow}>
-        {(["upload", "spotify"] as ContentSource[]).map((s) => (
+        {(["upload", "streaming"] as ContentSource[]).map((s) => (
           <Pressable
             key={s}
             style={[styles.categoryChip, form.source === s && styles.categoryChipActive]}
@@ -345,7 +375,7 @@ function AdminDashboard({ user }: { user: User }) {
                 form.source === s && styles.categoryChipTextActive,
               ]}
             >
-              {s === "upload" ? "Arquivo (Drive/Cloudflare)" : "Spotify"}
+              {s === "upload" ? "Arquivo (qualquer link direto)" : "Streaming de música"}
             </Text>
           </Pressable>
         ))}
@@ -353,9 +383,14 @@ function AdminDashboard({ user }: { user: User }) {
 
       {form.source === "upload" ? (
         <>
+          <Text style={styles.fieldHint}>
+            Cole o link direto do arquivo — qualquer provedor de cloud
+            funciona (Google Drive, Dropbox, OneDrive, Cloudflare Pages,
+            etc.), desde que o link seja acessível publicamente.
+          </Text>
           <TextInput
             style={styles.input}
-            placeholder="Link do arquivo (https://drive.google.com/... ou https://mensageiros-da-paz.pages.dev/content/...)"
+            placeholder="https://drive.google.com/... ou https://mensageiros-da-paz.pages.dev/content/..."
             placeholderTextColor={colors.textSecondary}
             value={form.fileUrl}
             onChangeText={(fileUrl) => setForm((f) => ({ ...f, fileUrl }))}
@@ -382,14 +417,43 @@ function AdminDashboard({ user }: { user: User }) {
           </View>
         </>
       ) : (
-        <TextInput
-          style={styles.input}
-          placeholder="https://open.spotify.com/track/..."
-          placeholderTextColor={colors.textSecondary}
-          value={form.spotifyUrl}
-          onChangeText={(spotifyUrl) => setForm((f) => ({ ...f, spotifyUrl }))}
-          autoCapitalize="none"
-        />
+        <>
+          <Text style={styles.fieldHint}>
+            Escolha a plataforma e cole o link da faixa/álbum/playlist. No
+            Spotify o player toca embutido no app; nas outras, o link abre
+            na plataforma original.
+          </Text>
+          <View style={styles.categoryRow}>
+            {STREAMING_PROVIDERS.map((p) => (
+              <Pressable
+                key={p}
+                style={[
+                  styles.categoryChip,
+                  form.streamingProvider === p && styles.categoryChipActive,
+                ]}
+                onPress={() => setForm((f) => ({ ...f, streamingProvider: p }))}
+                accessibilityRole="button"
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    form.streamingProvider === p && styles.categoryChipTextActive,
+                  ]}
+                >
+                  {STREAMING_PROVIDER_LABEL[p]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="https://open.spotify.com/track/... (ou link da plataforma escolhida)"
+            placeholderTextColor={colors.textSecondary}
+            value={form.streamingUrl}
+            onChangeText={(streamingUrl) => setForm((f) => ({ ...f, streamingUrl }))}
+            autoCapitalize="none"
+          />
+        </>
       )}
 
       <TextInput
@@ -466,6 +530,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.xs,
     marginBottom: spacing.md,
+  },
+  fieldHint: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    lineHeight: 16,
   },
   input: {
     minHeight: minTouchSize,

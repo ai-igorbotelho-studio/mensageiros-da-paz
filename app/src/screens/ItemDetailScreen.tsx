@@ -5,13 +5,21 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { ErrorState } from "@/components/ErrorState";
 import { SpotifyEmbed } from "@/components/SpotifyEmbed";
-import type { RootStackParamList } from "@/types";
+import type { RootStackParamList, StreamingProvider } from "@/types";
 
 /** Extrai o id da faixa de uma URL do Spotify (open.spotify.com/track/{id} ou /embed/track/{id}). */
 function extractSpotifyTrackId(url: string): string | null {
   const match = url.match(/track\/([a-zA-Z0-9]+)/);
   return match ? match[1] : null;
 }
+
+const STREAMING_LABEL: Record<StreamingProvider, string> = {
+  spotify: "no Spotify",
+  youtube: "no YouTube Music",
+  soundcloud: "no SoundCloud",
+  apple_music: "no Apple Music",
+  other: "no site original",
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, "ItemDetail">;
 
@@ -93,19 +101,21 @@ export function ItemDetailScreen({ route }: Props) {
         <Text style={styles.description}>{item.description}</Text>
       ) : null}
 
-      {item.source === "spotify" && item.spotifyUrl ? (
+      {item.source === "streaming" && item.streamingUrl ? (
         (() => {
-          const trackId = extractSpotifyTrackId(item.spotifyUrl);
+          const isSpotify = item.streamingProvider === "spotify";
+          const trackId = isSpotify ? extractSpotifyTrackId(item.streamingUrl) : null;
+          const label = STREAMING_LABEL[item.streamingProvider ?? "other"];
           return trackId ? (
             <SpotifyEmbed trackId={trackId} />
           ) : (
             <Pressable
               style={styles.playButton}
-              onPress={() => Linking.openURL(item.spotifyUrl!)}
+              onPress={() => Linking.openURL(item.streamingUrl!)}
               accessibilityRole="button"
-              accessibilityLabel="Abrir no Spotify"
+              accessibilityLabel={`Abrir ${label}`}
             >
-              <Text style={styles.playButtonText}>Abrir no Spotify</Text>
+              <Text style={styles.playButtonText}>Abrir {label}</Text>
             </Pressable>
           );
         })()

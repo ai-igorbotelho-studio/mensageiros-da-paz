@@ -12,15 +12,16 @@ painel admin web" em `docs/BACKEND-ARCHITECTURE.md`.
 
 Categoria (`category`) usa os valores `oracoes`, `musicas`, `textos`,
 `livros`, conforme o modelo de dados em `docs/BACKEND-ARCHITECTURE.md`.
-`source` (`upload` ou `spotify`) discrimina se o item tem arquivo próprio ou
-é um link do Spotify (seção 2.2 do mesmo documento).
+`source` (`upload` ou `streaming`) discrimina se o item tem arquivo próprio
+ou é um link de plataforma de streaming — Spotify, YouTube Music,
+SoundCloud, Apple Music ou outra (seção 2.2 do mesmo documento).
 
 ## Músicas
 
 | # | Título | Artista/Autor | Ano | Duração (aprox.) | Origem | Status |
 |---|--------|----------------|-----|-------------------|--------|--------|
 | 1 | Guerreiro do Bem | Pablo Sganzerla | 2014 | 5:14 | Upload próprio (Cloudflare Pages) | Commitado em `app/content-src/musicas/Guerreiro-do-Bem.mp3`, servido em produção |
-| 2 | Chamatrina | Emanazul | — | — | Spotify | `spotify_url`: `https://open.spotify.com/track/0DaPk7qd7pDqmuybzgbTOO` |
+| 2 | Chamatrina | Emanazul | — | — | Streaming (Spotify) | `streaming_url`: `https://open.spotify.com/track/0DaPk7qd7pDqmuybzgbTOO` |
 
 Campos sugeridos para o item 1 (upload, hospedado no Cloudflare Pages —
 ver nota de revisão no topo deste arquivo):
@@ -38,14 +39,15 @@ ver nota de revisão no topo deste arquivo):
 }
 ```
 
-Campos sugeridos para o item 2 (Spotify):
+Campos sugeridos para o item 2 (streaming, Spotify):
 ```json
 {
   "title": "Chamatrina",
   "description": "Emanazul",
   "category": "musicas",
-  "source": "spotify",
-  "spotify_url": "https://open.spotify.com/track/0DaPk7qd7pDqmuybzgbTOO",
+  "source": "streaming",
+  "streaming_provider": "spotify",
+  "streaming_url": "https://open.spotify.com/track/0DaPk7qd7pDqmuybzgbTOO",
   "order": 2,
   "published": true
 }
