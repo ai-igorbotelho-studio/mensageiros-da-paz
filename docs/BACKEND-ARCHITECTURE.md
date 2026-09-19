@@ -271,18 +271,29 @@ armazenamento total — evitar arquivos desnecessariamente grandes).
 
 ---
 
-## 4. Administração de conteúdo (revisado — sem painel web dedicado)
+## 4. Administração de conteúdo (revisado 2026-09-19 — painel de admin no app)
 
-**Decisão para o escopo fechado atual: não construir nem manter um painel de
-admin web separado.** Para um único administrador de conteúdo (o Head)
-editando ocasionalmente 1 texto e uma lista pequena de itens, o **próprio
-Firebase Console** (gratuito, já incluso em qualquer projeto Firebase) cobre
-100% da necessidade: editor de documentos Firestore com formulário de campos.
-Construir um SPA React seria esforço de desenvolvimento e manutenção
-contínua (dependências, hospedagem, autenticação própria) sem ganho real
-para um usuário só editando esporadicamente. Se no futuro houver múltiplos
-administradores editando frequentemente, reavaliar um painel dedicado — não
-é o caso hoje.
+> **Revisão 2026-09-19 — painel de admin reintroduzido.** A decisão
+> original abaixo (usar só o Firebase Console) foi revertida — ver
+> `DECISIONS.md`, "Painel de admin reintroduzido". Na prática o Console
+> se mostrou pouco prático para o Head. Agora existe uma tela `/admin`
+> dentro do próprio app (`app/src/screens/AdminScreen.tsx`,
+> `app/src/firebase/admin.ts`), com login por e-mail/senha (conta única,
+> criada manualmente no Firebase Authentication), que cobre: editar a
+> Prática da Semana, e criar/editar/excluir itens de Orações, Músicas,
+> Textos e Livros — colando o link do arquivo (Google Drive ou Cloudflare
+> Pages, seção 3.3) em vez de upload de verdade, já que não há mais
+> Firebase Storage. O guia do Firebase Console abaixo (4.1) continua
+> válido como alternativa/fallback, mas deixa de ser o caminho principal.
+
+**Contexto da decisão original (mantido para histórico):** para um único
+administrador de conteúdo (o Head) editando ocasionalmente 1 texto e uma
+lista pequena de itens, o **Firebase Console** (gratuito) cobria a
+necessidade sem esforço de desenvolvimento extra. Isso mudou porque, na
+prática, navegar o Console para cada edição se mostrou mais lento e
+propenso a erro de digitação de campo do que vale a pena — construir a
+tela de admin (poucas centenas de linhas, no mesmo código-base já
+existente) compensou o esforço.
 
 > **Revisão 2026-09-19 — sem Firebase Storage.** Conforme `DECISIONS.md`
 > ("Sem Firebase Storage — PDFs no Google Drive, áudio no Cloudflare
@@ -449,30 +460,49 @@ sem exigir login/senha do usuário) antes de qualquer escrita em `devices`.
 Isso troca uma Cloud Function completa com rate limiting/App Check por uma
 troca de uma linha na regra — `if true` vira `if request.auth != null`.
 
+> **Revisão 2026-09-19 — admin por e-mail/senha, não custom claim.** As
+> regras abaixo originalmente usavam `request.auth.token.admin == true`
+> (custom claim), que exige rodar o Firebase Admin SDK server-side
+> (Cloud Function ou script local com service account) para setar o
+> claim — um passo extra que não foi feito. Com o painel de admin
+> reintroduzido (`DECISIONS.md`, "Painel de admin reintroduzido"), a
+> distinção simples e suficiente para um único operador é o **método de
+> login**: `request.auth.token.firebase.sign_in_provider == 'password'`
+> identifica a conta e-mail/senha do Head, diferente da autenticação
+> **anônima** que o app usa para device tokens de push
+> (`signInAnonymously()`) — sem essa distinção, qualquer visitante do
+> app (que já é autenticado anonimamente para push) teria permissão de
+> escrita em `items`/`config`. A leitura de `items` também passa a
+> liberar rascunhos (`published == false`) para o admin logado, já que
+> o painel precisa listar itens não publicados.
+
 ```
 // firestore.rules (revisado — validar no emulador antes de deploy)
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
     match /config/practice_of_the_week {
       allow read: if true;                 // leitura pública
-      allow write: if request.auth != null
-                   && request.auth.token.admin == true;
+      allow write: if isAdmin();
     }
 
     match /items/{itemId} {
-      allow read: if resource.data.published == true;   // só itens publicados
-      allow write: if request.auth != null
-                   && request.auth.token.admin == true;
+      allow read: if resource.data.published == true || isAdmin();
+      allow write: if isAdmin();
     }
 
     match /devices/{deviceId} {
       allow read: if false;                // nunca lido pelo cliente
       allow create, update: if request.auth != null
-                   && request.resource.data.keys().hasOnly(['token', 'platform', 'created_at', 'last_seen_at'])
+                   && request.resource.data.keys().hasOnly(['token', 'platform', 'device_id', 'created_at', 'last_seen_at'])
                    && request.resource.data.platform in ['ios', 'android'];
-      allow delete: if request.auth != null && request.auth.token.admin == true;
+      allow delete: if isAdmin();
     }
   }
 }

@@ -32,4 +32,5 @@ export type RootStackParamList = {
   ContentList: { category: ContentCategory; title: string };
   ItemDetail: { item: ContentItem };
   Settings: undefined;
+  Admin: undefined;
 };

@@ -1,0 +1,616 @@
+import React, { useEffect, useState } from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import type { User } from "firebase/auth";
+import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+import {
+  adminCreateItem,
+  adminDeleteItem,
+  adminGetPracticeOfTheWeek,
+  adminListItemsByCategory,
+  adminSetPracticeOfTheWeek,
+  adminSignIn,
+  adminSignOut,
+  adminUpdateItem,
+  watchAdminAuth,
+  type ItemFormValues,
+} from "@/firebase/admin";
+import type { ContentCategory, ContentItem, ContentSource, FileType } from "@/types";
+
+/**
+ * Painel de admin dentro do próprio app (rota /admin na versão web),
+ * revertendo a decisão original de "sem painel dedicado" — ver
+ * DECISIONS.md, 2026-09-19, "Painel de admin reintroduzido". Único
+ * usuário (o Head), autenticado por e-mail/senha criado manualmente no
+ * Firebase Console. Não é um app separado, apenas mais uma tela do mesmo
+ * código-base React Native/Expo.
+ *
+ * Como não há Firebase Storage (ver DECISIONS.md, "Sem Firebase
+ * Storage"), o campo de arquivo é um link colado pelo Head (Google Drive
+ * para PDF, Cloudflare Pages para áudio próprio), não um upload real.
+ */
+
+const CATEGORIES: ContentCategory[] = ["oracoes", "musicas", "textos", "livros"];
+const CATEGORY_LABEL: Record<ContentCategory, string> = {
+  oracoes: "Orações",
+  musicas: "Músicas",
+  textos: "Textos",
+  livros: "Livros",
+};
+
+const EMPTY_FORM: ItemFormValues = {
+  title: "",
+  description: "",
+  category: "livros",
+  source: "upload",
+  fileUrl: "",
+  fileType: "pdf",
+  spotifyUrl: "",
+  order: 1,
+  published: true,
+};
+
+export function AdminScreen() {
+  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  useEffect(() => watchAdminAuth(setUser), []);
+
+  async function handleLogin() {
+    setLoginError(null);
+    try {
+      await adminSignIn(email.trim(), password);
+    } catch {
+      setLoginError("E-mail ou senha incorretos.");
+    }
+  }
+
+  if (user === undefined) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.helper}>Carregando…</Text>
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Admin</Text>
+        <Text style={styles.helper}>
+          Entre com a conta criada no Firebase Authentication.
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="E-mail"
+          placeholderTextColor={colors.textSecondary}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Senha"
+          placeholderTextColor={colors.textSecondary}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        {loginError ? <Text style={styles.error}>{loginError}</Text> : null}
+        <Pressable style={styles.primaryButton} onPress={handleLogin} accessibilityRole="button">
+          <Text style={styles.primaryButtonText}>Entrar</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return <AdminDashboard user={user} />;
+}
+
+function AdminDashboard({ user }: { user: User }) {
+  const [practiceText, setPracticeText] = useState("");
+  const [practiceLoading, setPracticeLoading] = useState(true);
+  const [practiceSaved, setPracticeSaved] = useState(false);
+  const [category, setCategory] = useState<ContentCategory>("livros");
+  const [items, setItems] = useState<ContentItem[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [form, setForm] = useState<ItemFormValues>(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    adminGetPracticeOfTheWeek()
+      .then(setPracticeText)
+      .finally(() => setPracticeLoading(false));
+  }, []);
+
+  const loadItems = React.useCallback(() => {
+    setItemsLoading(true);
+    adminListItemsByCategory(category)
+      .then(setItems)
+      .catch(() => setItems([]))
+      .finally(() => setItemsLoading(false));
+  }, [category]);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
+  async function savePractice() {
+    setPracticeSaved(false);
+    try {
+      await adminSetPracticeOfTheWeek(practiceText, user.email ?? "admin");
+      setPracticeSaved(true);
+    } catch {
+      // erro silencioso simples — admin interno, baixo volume de uso
+    }
+  }
+
+  function startEdit(item: ContentItem) {
+    setEditingId(item.id);
+    setForm({
+      title: item.title,
+      description: item.description ?? "",
+      category: item.category,
+      source: item.source,
+      fileUrl: item.fileUrl ?? "",
+      fileType: item.fileType ?? "pdf",
+      spotifyUrl: item.spotifyUrl ?? "",
+      order: item.order,
+      published: item.published,
+    });
+  }
+
+  function startNew() {
+    setEditingId(null);
+    setForm({ ...EMPTY_FORM, category, order: items.length + 1 });
+  }
+
+  async function submitForm() {
+    setFormError(null);
+    if (!form.title.trim()) {
+      setFormError("Título é obrigatório.");
+      return;
+    }
+    if (form.source === "upload" && !form.fileUrl.trim()) {
+      setFormError("Cole o link do arquivo (Drive/Cloudflare).");
+      return;
+    }
+    if (form.source === "spotify" && !form.spotifyUrl.trim()) {
+      setFormError("Cole o link da faixa do Spotify.");
+      return;
+    }
+    try {
+      if (editingId) {
+        await adminUpdateItem(editingId, form);
+      } else {
+        await adminCreateItem(form, user.email ?? "admin");
+      }
+      startNew();
+      loadItems();
+    } catch {
+      setFormError("Não foi possível salvar. Tente novamente.");
+    }
+  }
+
+  async function removeItem(id: string) {
+    await adminDeleteItem(id);
+    loadItems();
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Admin</Text>
+        <Pressable onPress={() => adminSignOut()} accessibilityRole="button">
+          <Text style={styles.link}>Sair</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.helper}>Logado como {user.email}</Text>
+
+      {/* Prática da Semana */}
+      <Text style={styles.sectionTitle}>Prática da Semana</Text>
+      {practiceLoading ? (
+        <Text style={styles.helper}>Carregando…</Text>
+      ) : (
+        <>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={practiceText}
+            onChangeText={(t) => {
+              setPracticeText(t);
+              setPracticeSaved(false);
+            }}
+            multiline
+            placeholder="Texto da prática desta semana"
+            placeholderTextColor={colors.textSecondary}
+          />
+          <Pressable style={styles.primaryButton} onPress={savePractice} accessibilityRole="button">
+            <Text style={styles.primaryButtonText}>Salvar</Text>
+          </Pressable>
+          {practiceSaved ? <Text style={styles.success}>Salvo.</Text> : null}
+        </>
+      )}
+
+      {/* Seletor de categoria */}
+      <Text style={styles.sectionTitle}>Itens</Text>
+      <View style={styles.categoryRow}>
+        {CATEGORIES.map((c) => (
+          <Pressable
+            key={c}
+            style={[styles.categoryChip, category === c && styles.categoryChipActive]}
+            onPress={() => setCategory(c)}
+            accessibilityRole="button"
+          >
+            <Text
+              style={[
+                styles.categoryChipText,
+                category === c && styles.categoryChipTextActive,
+              ]}
+            >
+              {CATEGORY_LABEL[c]}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {itemsLoading ? (
+        <Text style={styles.helper}>Carregando…</Text>
+      ) : items.length === 0 ? (
+        <Text style={styles.helper}>Nenhum item cadastrado nesta categoria.</Text>
+      ) : (
+        items.map((item) => (
+          <View key={item.id} style={styles.itemRow}>
+            <View style={styles.itemTextColumn}>
+              <Text style={styles.itemTitle}>
+                {item.title} {item.published ? "" : "(rascunho)"}
+              </Text>
+              {item.description ? (
+                <Text style={styles.itemDescription}>{item.description}</Text>
+              ) : null}
+              <Text style={styles.itemMeta}>
+                {item.source === "spotify" ? "Spotify" : item.fileType?.toUpperCase()} · ordem {item.order}
+              </Text>
+            </View>
+            <Pressable onPress={() => startEdit(item)} accessibilityRole="button">
+              <Text style={styles.link}>Editar</Text>
+            </Pressable>
+            <Pressable onPress={() => removeItem(item.id)} accessibilityRole="button">
+              <Text style={styles.linkDanger}>Excluir</Text>
+            </Pressable>
+          </View>
+        ))
+      )}
+
+      {/* Formulário de item */}
+      <Text style={styles.sectionTitle}>
+        {editingId ? "Editar item" : "Novo item"}
+      </Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Título"
+        placeholderTextColor={colors.textSecondary}
+        value={form.title}
+        onChangeText={(title) => setForm((f) => ({ ...f, title }))}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Descrição (ex: Autor · Ano)"
+        placeholderTextColor={colors.textSecondary}
+        value={form.description}
+        onChangeText={(description) => setForm((f) => ({ ...f, description }))}
+      />
+
+      <View style={styles.categoryRow}>
+        {CATEGORIES.map((c) => (
+          <Pressable
+            key={c}
+            style={[styles.categoryChip, form.category === c && styles.categoryChipActive]}
+            onPress={() => setForm((f) => ({ ...f, category: c }))}
+            accessibilityRole="button"
+          >
+            <Text
+              style={[
+                styles.categoryChipText,
+                form.category === c && styles.categoryChipTextActive,
+              ]}
+            >
+              {CATEGORY_LABEL[c]}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <View style={styles.categoryRow}>
+        {(["upload", "spotify"] as ContentSource[]).map((s) => (
+          <Pressable
+            key={s}
+            style={[styles.categoryChip, form.source === s && styles.categoryChipActive]}
+            onPress={() => setForm((f) => ({ ...f, source: s }))}
+            accessibilityRole="button"
+          >
+            <Text
+              style={[
+                styles.categoryChipText,
+                form.source === s && styles.categoryChipTextActive,
+              ]}
+            >
+              {s === "upload" ? "Arquivo (Drive/Cloudflare)" : "Spotify"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {form.source === "upload" ? (
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="Link do arquivo (https://drive.google.com/... ou https://mensageiros-da-paz.pages.dev/content/...)"
+            placeholderTextColor={colors.textSecondary}
+            value={form.fileUrl}
+            onChangeText={(fileUrl) => setForm((f) => ({ ...f, fileUrl }))}
+            autoCapitalize="none"
+          />
+          <View style={styles.categoryRow}>
+            {(["pdf", "image", "audio"] as FileType[]).map((ft) => (
+              <Pressable
+                key={ft}
+                style={[styles.categoryChip, form.fileType === ft && styles.categoryChipActive]}
+                onPress={() => setForm((f) => ({ ...f, fileType: ft }))}
+                accessibilityRole="button"
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    form.fileType === ft && styles.categoryChipTextActive,
+                  ]}
+                >
+                  {ft.toUpperCase()}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : (
+        <TextInput
+          style={styles.input}
+          placeholder="https://open.spotify.com/track/..."
+          placeholderTextColor={colors.textSecondary}
+          value={form.spotifyUrl}
+          onChangeText={(spotifyUrl) => setForm((f) => ({ ...f, spotifyUrl }))}
+          autoCapitalize="none"
+        />
+      )}
+
+      <TextInput
+        style={styles.input}
+        placeholder="Ordem (número)"
+        placeholderTextColor={colors.textSecondary}
+        value={String(form.order)}
+        onChangeText={(v) => setForm((f) => ({ ...f, order: Number(v) || 0 }))}
+        keyboardType="numeric"
+      />
+
+      <View style={styles.row}>
+        <Text style={styles.label}>Publicado</Text>
+        <Switch
+          value={form.published}
+          onValueChange={(published) => setForm((f) => ({ ...f, published }))}
+          trackColor={{ false: colors.textSecondary, true: colors.primaryLight }}
+          thumbColor={form.published ? colors.primary : colors.surface}
+        />
+      </View>
+
+      {formError ? <Text style={styles.error}>{formError}</Text> : null}
+
+      <View style={styles.formButtonsRow}>
+        <Pressable style={styles.primaryButton} onPress={submitForm} accessibilityRole="button">
+          <Text style={styles.primaryButtonText}>{editingId ? "Salvar alterações" : "Adicionar item"}</Text>
+        </Pressable>
+        {editingId ? (
+          <Pressable style={styles.secondaryButton} onPress={startNew} accessibilityRole="button">
+            <Text style={styles.secondaryButtonText}>Cancelar</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  title: {
+    fontFamily: fonts.displayFallback,
+    fontSize: 24,
+    color: colors.textPrimary,
+  },
+  sectionTitle: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 16,
+    color: colors.textPrimary,
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+  },
+  helper: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  input: {
+    minHeight: minTouchSize,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontFamily: fonts.bodyFallback,
+    fontSize: 16,
+    color: colors.textPrimary,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.sm,
+  },
+  textArea: {
+    minHeight: 96,
+    textAlignVertical: "top",
+  },
+  primaryButton: {
+    minHeight: minTouchSize,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginTop: spacing.sm,
+  },
+  primaryButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 16,
+    color: colors.surface,
+  },
+  secondaryButton: {
+    minHeight: minTouchSize,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.textSecondary,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginTop: spacing.sm,
+    marginLeft: spacing.sm,
+  },
+  secondaryButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "600",
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  formButtonsRow: {
+    flexDirection: "row",
+    marginTop: spacing.sm,
+  },
+  error: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 14,
+    color: colors.accent,
+    marginTop: spacing.sm,
+  },
+  success: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 14,
+    color: colors.success,
+    marginTop: spacing.sm,
+  },
+  link: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+    marginLeft: spacing.md,
+  },
+  linkDanger: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.accent,
+    marginLeft: spacing.md,
+  },
+  categoryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  categoryChip: {
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  categoryChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  categoryChipText: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  categoryChipTextActive: {
+    color: colors.surface,
+  },
+  itemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  itemTextColumn: {
+    flex: 1,
+  },
+  itemTitle: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "600",
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  itemDescription: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  itemMeta: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.sm,
+  },
+  label: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+});

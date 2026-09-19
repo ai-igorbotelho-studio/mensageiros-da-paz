@@ -8,9 +8,29 @@ import { MensageirosScreen } from "@/screens/MensageirosScreen";
 import { ContentListScreen } from "@/screens/ContentListScreen";
 import { ItemDetailScreen } from "@/screens/ItemDetailScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
+import { AdminScreen } from "@/screens/AdminScreen";
 import type { RootStackParamList } from "@/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+/**
+ * Habilita `https://mensageiros-da-paz.pages.dev/admin` como endereço
+ * direto na versão web (React Navigation linking) — ver DECISIONS.md,
+ * 2026-09-19, "Painel de admin reintroduzido". `ItemDetail` fica de fora
+ * do linking porque depende do objeto completo do item, não só de um id
+ * na URL — não é um caso de uso de deep link aqui.
+ */
+const linking = {
+  prefixes: [],
+  config: {
+    screens: {
+      Home: "",
+      Mensageiros: "mensageiros",
+      Settings: "configuracoes",
+      Admin: "admin",
+    },
+  },
+};
 
 /**
  * Navegação estritamente hierárquica (sem tabs), conforme
@@ -21,7 +41,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  */
 export function RootNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
@@ -79,6 +99,11 @@ export function RootNavigator() {
           name="Settings"
           component={SettingsScreen}
           options={{ title: "Configurações" }}
+        />
+        <Stack.Screen
+          name="Admin"
+          component={AdminScreen}
+          options={{ title: "Admin" }}
         />
       </Stack.Navigator>
     </NavigationContainer>

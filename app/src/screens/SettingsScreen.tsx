@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, spacing } from "@/theme/tokens";
 import {
   disableNotifications,
@@ -7,6 +8,9 @@ import {
   isIOSPushUnavailable,
   isNotificationsEnabled,
 } from "@/notifications/pushNotifications";
+import type { RootStackParamList } from "@/types";
+
+type Props = NativeStackScreenProps<RootStackParamList, "Settings">;
 
 /**
  * Tela de Configurações — NÃO faz parte do mapa de telas original em
@@ -24,7 +28,7 @@ import {
  * fricção visual possível, seguindo os tokens de design, mas deve ser
  * revisada por Design antes do gate de Auditoria.
  */
-export function SettingsScreen() {
+export function SettingsScreen({ navigation }: Props) {
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -86,6 +90,14 @@ export function SettingsScreen() {
         </Text>
       ) : null}
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
+
+      <Pressable
+        style={styles.adminLink}
+        onPress={() => navigation.navigate("Admin")}
+        accessibilityRole="button"
+      >
+        <Text style={styles.adminLinkText}>Área de administração</Text>
+      </Pressable>
     </View>
   );
 }
@@ -138,5 +150,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.md,
     lineHeight: 20,
+  },
+  adminLink: {
+    marginTop: spacing.xxl,
+    alignItems: "center",
+  },
+  adminLinkText: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textDecorationLine: "underline",
   },
 });
