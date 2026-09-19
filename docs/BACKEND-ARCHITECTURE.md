@@ -17,11 +17,12 @@ notificações push, segurança e checklist de deploy. Base para
 > dados, contrato de leitura) permanece válido sem alteração.
 
 Escopo de conteúdo: conforme `docs/UX-ARCHITECTURE.md`, o app tem Home
-("Prática da Semana") → Mensageiros → **Orações** / **Músicas** / **Textos**.
-Este documento já assume a subpágina **Textos** (pedida pelo Head na tarefa de
-admin), estendendo o hub de Mensageiros para três categorias de conteúdo, o
-que deve ser confirmado com `ux-architect`/Head antes do gate de Design ser
-fechado para essa tela.
+("Prática da Semana") → Mensageiros → **Orações** / **Músicas** / **Leituras**
+(hub interno com **Textos** e **Livros**), quatro categorias de conteúdo no
+total: `oracoes`, `musicas`, `textos`, `livros`. A estrutura "Leituras" (antes
+só "Textos") e a categoria `livros` foram adicionadas em 2026-09-19 por
+pedido direto do Head — `ux-architect` ainda precisa formalizar o wireframe
+correspondente em `UX-ARCHITECTURE.md` (pendência já sinalizada ali).
 
 ---
 
@@ -122,7 +123,7 @@ items/{itemId}
 {
   "title": string,                 // obrigatório
   "description": string | null,    // opcional, texto curto de apoio (ex. "Artista · Ano")
-  "category": "oracoes" | "musicas" | "textos",  // obrigatório
+  "category": "oracoes" | "musicas" | "textos" | "livros",  // obrigatório
   "source": "upload" | "spotify",  // obrigatório — discrimina os campos abaixo
 
   // presentes somente quando source == "upload":
@@ -212,7 +213,7 @@ paths:
         - in: query
           name: category
           required: true
-          schema: { type: string, enum: [oracoes, musicas, textos] }
+          schema: { type: string, enum: [oracoes, musicas, textos, livros] }
       responses:
         "200":
           description: OK
@@ -230,7 +231,7 @@ components:
         id: { type: string }
         title: { type: string }
         description: { type: string, nullable: true }
-        category: { type: string, enum: [oracoes, musicas, textos] }
+        category: { type: string, enum: [oracoes, musicas, textos, livros] }
         file_url: { type: string, format: uri }
         file_type: { type: string, enum: [pdf, image, audio] }
         order: { type: integer }
@@ -305,7 +306,7 @@ frequentemente, reavaliar um painel dedicado — não é o caso hoje.
 3. Firebase Console → **Firestore Database** → coleção `items` → **Adicionar
    documento** (ID automático ou definido manualmente).
 4. Preencher os campos conforme o modelo da seção 2.2: `title`, `description`
-   (opcional), `category` (`oracoes`/`musicas`/`textos`), `source: "upload"`,
+   (opcional), `category` (`oracoes`/`musicas`/`textos`/`livros`), `source: "upload"`,
    `file_url` (colado do passo 2), `file_type`, `mime_type`,
    `file_size_bytes` (visível na tela de detalhes do arquivo no Storage),
    `order` (número para posição na lista), `created_at`/`updated_at`

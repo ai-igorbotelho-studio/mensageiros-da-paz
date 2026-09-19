@@ -1,4 +1,4 @@
-export type ContentCategory = "oracoes" | "musicas" | "textos";
+export type ContentCategory = "oracoes" | "musicas" | "textos" | "livros";
 
 export type FileType = "pdf" | "image" | "audio";
 
