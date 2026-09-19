@@ -21,11 +21,14 @@ type Props = NativeStackScreenProps<RootStackParamList, "ItemDetail">;
  * Expo Go). Enquanto isso não estiver disponível, cai no fallback de abrir
  * o arquivo no navegador do dispositivo.
  */
+const VOLUME_STEP = 0.1;
+
 export function ItemDetailScreen({ route }: Props) {
   const { item } = route.params;
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [status, setStatus] = useState<AVPlaybackStatus | null>(null);
   const [playbackError, setPlaybackError] = useState(false);
+  const [volume, setVolume] = useState(1);
 
   useEffect(() => {
     return () => {
@@ -40,7 +43,7 @@ export function ItemDetailScreen({ route }: Props) {
       if (!sound) {
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: item.fileUrl },
-          { shouldPlay: true },
+          { shouldPlay: true, volume },
           setStatus
         );
         setSound(newSound);
@@ -56,7 +59,32 @@ export function ItemDetailScreen({ route }: Props) {
     }
   }
 
+  async function stopPlayback() {
+    if (!sound) return;
+    try {
+      await sound.stopAsync();
+      await sound.setPositionAsync(0);
+    } catch {
+      setPlaybackError(true);
+    }
+  }
+
+  async function changeVolume(delta: number) {
+    const next = Math.min(1, Math.max(0, volume + delta));
+    setVolume(next);
+    if (sound) {
+      try {
+        await sound.setVolumeAsync(next);
+      } catch {
+        // Silencioso: alguns players web não suportam volume programático
+        // (o controle nativo do navegador continua funcionando).
+      }
+    }
+  }
+
   const isPlaying = status && "isPlaying" in status ? status.isPlaying : false;
+  const isLoaded = status?.isLoaded ?? false;
+  const canStop = isLoaded && (isPlaying || (status && "positionMillis" in status && status.positionMillis > 0));
 
   return (
     <View style={styles.container}>
@@ -100,16 +128,52 @@ export function ItemDetailScreen({ route }: Props) {
               onRetry={togglePlayback}
             />
           ) : (
-            <Pressable
-              style={styles.playButton}
-              onPress={togglePlayback}
-              accessibilityRole="button"
-              accessibilityLabel={isPlaying ? "Pausar" : "Reproduzir"}
-            >
-              <Text style={styles.playButtonText}>
-                {isPlaying ? "Pausar" : "Reproduzir"}
-              </Text>
-            </Pressable>
+            <>
+              <View style={styles.transportRow}>
+                <Pressable
+                  style={styles.playButton}
+                  onPress={togglePlayback}
+                  accessibilityRole="button"
+                  accessibilityLabel={isPlaying ? "Pausar" : "Reproduzir"}
+                >
+                  <Text style={styles.playButtonText}>
+                    {isPlaying ? "Pausar" : "Reproduzir"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.stopButton, !canStop && styles.stopButtonDisabled]}
+                  onPress={stopPlayback}
+                  disabled={!canStop}
+                  accessibilityRole="button"
+                  accessibilityLabel="Parar"
+                >
+                  <Text style={styles.stopButtonText}>Parar</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.volumeRow}>
+                <Pressable
+                  style={styles.volumeButton}
+                  onPress={() => changeVolume(-VOLUME_STEP)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Diminuir volume"
+                >
+                  <Text style={styles.volumeButtonText}>−</Text>
+                </Pressable>
+                <View style={styles.volumeTrack}>
+                  <View style={[styles.volumeFill, { width: `${volume * 100}%` }]} />
+                </View>
+                <Pressable
+                  style={styles.volumeButton}
+                  onPress={() => changeVolume(VOLUME_STEP)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Aumentar volume"
+                >
+                  <Text style={styles.volumeButtonText}>+</Text>
+                </Pressable>
+                <Text style={styles.volumeLabel}>{Math.round(volume * 100)}%</Text>
+              </View>
+            </>
           )}
         </View>
       ) : null}
@@ -164,6 +228,77 @@ const styles = StyleSheet.create({
   audioBlock: {
     marginTop: spacing.lg,
     alignItems: "center",
+    width: "100%",
+  },
+  transportRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  stopButton: {
+    minHeight: minTouchSize,
+    minWidth: minTouchSize,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.textSecondary,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  stopButtonDisabled: {
+    opacity: 0.4,
+  },
+  stopButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "600",
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  volumeRow: {
+    marginTop: spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    width: "100%",
+    maxWidth: 320,
+  },
+  volumeButton: {
+    minHeight: 36,
+    minWidth: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.textSecondary,
+    borderRadius: 18,
+  },
+  volumeButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 18,
+    color: colors.textPrimary,
+    lineHeight: 20,
+  },
+  volumeTrack: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primaryLight,
+    overflow: "hidden",
+  },
+  volumeFill: {
+    height: "100%",
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+  },
+  volumeLabel: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 12,
+    color: colors.textSecondary,
+    width: 36,
+    textAlign: "right",
   },
   pdfBlock: {
     marginTop: spacing.lg,

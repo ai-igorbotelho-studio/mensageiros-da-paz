@@ -1,11 +1,14 @@
 # Conteúdo real — lista de cadastro (seed)
 
 Este arquivo é um checklist do conteúdo real já definido para o app, para
-você cadastrar no Firestore/Storage via Firebase Console, seguindo o guia
-de "Sem painel admin web" em `docs/BACKEND-ARCHITECTURE.md`. Os arquivos de
-mídia (áudio, PDF, imagem) em si **não são commitados neste repositório**
-— binários grandes não pertencem ao histórico do Git; eles vão direto para
-o Firebase Storage no momento do cadastro.
+você cadastrar no Firestore via Firebase Console, seguindo o guia de "Sem
+painel admin web" em `docs/BACKEND-ARCHITECTURE.md`.
+
+> **Revisão 2026-09-19 — sem Firebase Storage.** O Firebase Storage passou
+> a exigir cartão de crédito (plano Blaze) mesmo no uso gratuito, e o Head
+> recusou cadastrar cartão (ver `DECISIONS.md`). PDFs agora ficam no
+> **Google Drive** do Head; áudio próprio fica versionado no repositório
+> e servido pelo **Cloudflare Pages**. `file_url` aponta para essas fontes.
 
 Categoria (`category`) usa os valores `oracoes`, `musicas`, `textos`,
 `livros`, conforme o modelo de dados em `docs/BACKEND-ARCHITECTURE.md`.
@@ -16,24 +19,24 @@ Categoria (`category`) usa os valores `oracoes`, `musicas`, `textos`,
 
 | # | Título | Artista/Autor | Ano | Duração (aprox.) | Origem | Status |
 |---|--------|----------------|-----|-------------------|--------|--------|
-| 1 | Guerreiro do Bem | Pablo Sganzerla | 2014 | 5:14 | Upload próprio | Recebido do Head (arquivo local, aguardando upload real no Firebase Storage) |
+| 1 | Guerreiro do Bem | Pablo Sganzerla | 2014 | 5:14 | Upload próprio (Cloudflare Pages) | Commitado em `app/content-src/musicas/Guerreiro-do-Bem.mp3`, servido em produção |
 | 2 | Chamatrina | Emanazul | — | — | Spotify | `spotify_url`: `https://open.spotify.com/track/0DaPk7qd7pDqmuybzgbTOO` |
 
-Campos sugeridos para o item 1 (upload):
+Campos sugeridos para o item 1 (upload, hospedado no Cloudflare Pages —
+ver nota de revisão no topo deste arquivo):
 ```json
 {
   "title": "Guerreiro do Bem",
   "description": "Pablo Sganzerla · 2014",
   "category": "musicas",
   "source": "upload",
+  "file_url": "https://mensageiros-da-paz.pages.dev/content/musicas/Guerreiro-do-Bem.mp3",
   "file_type": "audio",
   "mime_type": "audio/mpeg",
   "order": 1,
   "published": true
 }
 ```
-`file_url` é preenchido depois de subir o MP3 no Storage e copiar o link
-público, conforme o passo a passo em `docs/BACKEND-ARCHITECTURE.md`.
 
 Campos sugeridos para o item 2 (Spotify):
 ```json
@@ -77,42 +80,48 @@ Nenhum conteúdo real definido ainda.
 ## Leituras → Livros
 
 18 PDFs recebidos do Head em 2026-09-19 (arquivo `Livros_e_Textos.zip`),
-extraídos localmente (não commitados — binários totalizam ~26 MB, acima do
-que faz sentido versionar em Git; ficam disponíveis para você subir ao
-Firebase Storage). Descrições de duas linhas já escritas e aplicadas no
-protótipo (`Livros.dc.html`); cada card tem um ícone de livro genérico
-(ilustração vetorial, sem capa real do livro — não há fonte confiável de
-capa real para todos os títulos, e o próprio guia de direção criativa
-recomenda ilustração simples em vez de imagens externas).
+agora hospedados no **Google Drive pessoal do Head** (pasta compartilhada
+como "Qualquer pessoa com o link — Leitor"), já que o Firebase Storage
+deixou de ser gratuito (ver nota de revisão no topo deste arquivo).
+Descrições de duas linhas já escritas e aplicadas no protótipo
+(`Livros.dc.html`); cada card tem um ícone de livro genérico (ilustração
+vetorial, sem capa real do livro — não há fonte confiável de capa real
+para todos os títulos, e o próprio guia de direção criativa recomenda
+ilustração simples em vez de imagens externas).
 
-| # | Título | Autor | Descrição (2 linhas, já no protótipo) |
-|---|--------|-------|-----------------------------------------|
-| 1 | O Livro Tibetano dos Mortos | — | Guia budista tibetano sobre os estados intermediários entre a morte e o renascimento. Orientação para a travessia da consciência após a morte física. |
-| 2 | O Evangelho de Judas | — | Texto gnóstico apócrifo com uma leitura alternativa do vínculo entre Jesus e Judas. Revela uma perspectiva pouco convencional sobre a traição. |
-| 3 | O Evangelho Essênio da Paz | — | Ensinamentos atribuídos aos essênios sobre alimentação, natureza e vida espiritual. Convite a uma vida simples, em harmonia com a Terra. |
-| 4 | O Caibalion | — | Síntese dos sete princípios herméticos, introdução clássica à filosofia hermética. Base de estudo para quem inicia na tradição hermética. |
-| 5 | Corpus Hermeticum | Hermes Trismegisto | Coletânea de textos que fundamentam a tradição hermética ocidental. Reflexões sobre Deus, o cosmo e a natureza da alma. |
-| 6 | O Livro de Enoque | — | Texto apócrifo judaico sobre anjos, cosmologia e profecias. Influência marcante sobre tradições esotéricas posteriores. |
-| 7 | Dicionário Rosacruz | — | Glossário de termos e conceitos da tradição rosacruz. Referência rápida para aprofundar o estudo esotérico. |
-| 8 | Atlântida e Lemúria, continentes desaparecidos | W. Scott-Elliot | Estudo teosófico sobre os lendários continentes perdidos. Descreve civilizações e ensinamentos ocultos remanescentes. |
-| 9 | Pistis Sofia II | — | Segundo volume do texto gnóstico sobre os ensinamentos de Jesus ressuscitado. Continuação dos mistérios revelados aos discípulos. |
-| 10 | Ramatis — O Astro Intruso | — | Obra psicografada de conteúdo espírita sobre eventos cósmicos e espirituais. Reflexão sobre a influência de fenômenos celestes na Terra. |
-| 11 | Pistis Sofia III | — | Terceiro volume do texto gnóstico sobre os ensinamentos de Jesus ressuscitado. Aprofunda os mistérios da alma (Sofia) e sua jornada. |
-| 12 | O Livro de Ouro de Saint Germain | — | Ensinamentos atribuídos ao Mestre Ascensionado Saint Germain. Sobre a Chama Violeta e a transmutação espiritual. |
-| 13 | Pistis Sofia | — | Texto gnóstico central sobre os ensinamentos de Jesus a seus discípulos. Revela mistérios da alma e da jornada espiritual (Sofia). |
-| 14 | Bhagavad Gita | PT-BR | Diálogo espiritual clássico entre Krishna e Arjuna. Um dos textos centrais da filosofia hindu sobre dever e devoção. |
-| 15 | Poemas Ocultistas | Fernando Pessoa | Coletânea de poemas de Pessoa com temática esotérica e rosacruz. Reflete a busca espiritual do poeta em versos. |
-| 16 | A Doutrina Secreta | Helena Blavatsky | Obra fundamental da Teosofia sobre cosmogênese e antropogênese. Explora, sob perspectiva esotérica, a origem do universo e da humanidade. |
-| 17 | Mãos de Luz | Barbara Ann Brennan | Guia clássico de cura energética através do campo áurico. Une observação científica e prática espiritual de cura. |
-| 18 | Courageous Dreaming | — | Livro sobre visão xamânica e criação consciente do futuro. Convite a sonhar com coragem a transformação do mundo. |
+| # | Título | Autor | `file_url` (Google Drive) |
+|---|--------|-------|------|
+| 1 | O Livro Tibetano dos Mortos | — | https://drive.google.com/file/d/0B0HNPNo_DmQzLUZBLUtSZnRpUUk/view?usp=sharing&resourcekey=0-ppwSNZG14VAUwq66cmwX3A |
+| 2 | O Evangelho de Judas | — | https://drive.google.com/file/d/0B0HNPNo_DmQzVlBQWmhha1BUUjA/view?usp=drive_link&resourcekey=0-C5y6sHN9ibGf35VwSk4usg |
+| 3 | O Evangelho Essênio da Paz | — | https://drive.google.com/file/d/0B0HNPNo_DmQzcWpKaG9iOUF1LVE/view?usp=drive_link&resourcekey=0-boiN9wW6XD3xG78F-DX0Dg |
+| 4 | O Caibalion | — | https://drive.google.com/file/d/0B0HNPNo_DmQzVVE3RWlCdElJdU0/view?usp=drive_link&resourcekey=0-A_db9hbE3LbM5xeBNUQHXQ |
+| 5 | Corpus Hermeticum | Hermes Trismegisto | https://drive.google.com/file/d/0B0HNPNo_DmQzVHdNNDZjYWh6VU0/view?usp=drive_link&resourcekey=0-QD5c3115LhuX__W06zd1Xw |
+| 6 | O Livro de Enoque | — | https://drive.google.com/file/d/0B0HNPNo_DmQzVzRTNnR0SVpGaFU/view?usp=drive_link&resourcekey=0-THhf3SP_uXKynNPnlhzv1w |
+| 7 | Dicionário Rosacruz | — | https://drive.google.com/file/d/0B0HNPNo_DmQzM2txbWIyeUlCdEU/view?usp=drive_link&resourcekey=0-cIIv-Gjpp-cVuWCIz2Yy5Q |
+| 8 | Atlântida e Lemúria, continentes desaparecidos | W. Scott-Elliot | https://drive.google.com/file/d/0B0HNPNo_DmQzVm9DWGZvVEVzZXM/view?usp=drive_link&resourcekey=0-SuLDhZFp1qDBM7m6mIaubQ |
+| 9 | Pistis Sofia II | — | https://drive.google.com/file/d/0B0HNPNo_DmQzN001TlJCMkJWR0U/view?usp=drive_link&resourcekey=0-iDi6CPmD3JwjGuQC0-a5hw |
+| 10 | Ramatis — O Astro Intruso | — | https://drive.google.com/file/d/0B0HNPNo_DmQzQUZZdVpLYUY5eGM/view?usp=drive_link&resourcekey=0-xeQ_IMPXkya0puAcGbaNSg |
+| 11 | Pistis Sofia III | — | https://drive.google.com/file/d/0B0HNPNo_DmQzRTBFaDNKZHZhVWs/view?usp=drive_link&resourcekey=0-ZOQcHw0EyvJ9KHxe-sPIZQ |
+| 12 | O Livro de Ouro de Saint Germain | — | https://drive.google.com/file/d/0B0HNPNo_DmQzaFY3V3ZKZksyS2M/view?usp=drive_link&resourcekey=0-1hPhPuZfoy82YZld58RZsA |
+| 13 | Pistis Sofia | — | https://drive.google.com/file/d/0B0HNPNo_DmQzbXNaT2R3N29hMzQ/view?usp=drive_link&resourcekey=0-nyJ-yClLMDYUPH-i_LdnHA |
+| 14 | Bhagavad Gita | PT-BR | https://drive.google.com/file/d/0B0HNPNo_DmQzYU5DRHQwVDh4Ymc/view?usp=drive_link&resourcekey=0-gaPiUDTWo5SnCAMgh44IgA |
+| 15 | Poemas Ocultistas | Fernando Pessoa | https://drive.google.com/file/d/0B0HNPNo_DmQzUzZKYW5QdFVDT1E/view?usp=drive_link&resourcekey=0-E18JOztQXMeJk2mgnp--uA |
+| 16 | A Doutrina Secreta | Helena Blavatsky | https://drive.google.com/file/d/0B0HNPNo_DmQzUFVwa09ZczgwVVU/view?usp=drive_link&resourcekey=0-PkfBo56-KIyhw0UXvg4Kdw |
+| 17 | Mãos de Luz | Barbara Ann Brennan | https://drive.google.com/file/d/0B0HNPNo_DmQzME5LOVVxVkFTeVU/view?usp=drive_link&resourcekey=0-YFA1ch6EFhY-8G6zjxGpbA |
+| 18 | Courageous Dreaming | — | https://drive.google.com/file/d/0B0HNPNo_DmQzNThtUWtDS1NwQTg/view?usp=drive_link&resourcekey=0-dbdHNrEhWXY0g1Xv4tdGMA |
 
-Campo sugerido por item (upload — todos são PDF):
+Descrições de duas linhas de cada (para o campo `description`, se quiser
+usar, ou deixar só o autor): ver a tabela anterior mantida no histórico do
+Git deste arquivo, ou as telas do protótipo (`Livros.dc.html`).
+
+Campo sugerido por item (todos são PDF, hospedados no Drive):
 ```json
 {
   "title": "<título>",
   "description": "<autor, quando houver>",
   "category": "livros",
   "source": "upload",
+  "file_url": "<link do Drive da tabela acima>",
   "file_type": "pdf",
   "mime_type": "application/pdf",
   "order": "<posição na lista acima>",

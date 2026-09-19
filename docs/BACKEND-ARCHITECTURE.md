@@ -277,12 +277,35 @@ armazenamento total — evitar arquivos desnecessariamente grandes).
 admin web separado.** Para um único administrador de conteúdo (o Head)
 editando ocasionalmente 1 texto e uma lista pequena de itens, o **próprio
 Firebase Console** (gratuito, já incluso em qualquer projeto Firebase) cobre
-100% da necessidade: editor de documentos Firestore com formulário de campos,
-e upload de arquivo com clique-arrastar no Storage. Construir um SPA React
-seria esforço de desenvolvimento e manutenção contínua (dependências,
-hospedagem, autenticação própria) sem ganho real para um usuário só editando
-esporadicamente. Se no futuro houver múltiplos administradores editando
-frequentemente, reavaliar um painel dedicado — não é o caso hoje.
+100% da necessidade: editor de documentos Firestore com formulário de campos.
+Construir um SPA React seria esforço de desenvolvimento e manutenção
+contínua (dependências, hospedagem, autenticação própria) sem ganho real
+para um usuário só editando esporadicamente. Se no futuro houver múltiplos
+administradores editando frequentemente, reavaliar um painel dedicado — não
+é o caso hoje.
+
+> **Revisão 2026-09-19 — sem Firebase Storage.** Conforme `DECISIONS.md`
+> ("Sem Firebase Storage — PDFs no Google Drive, áudio no Cloudflare
+> Pages"), o Firebase Storage passou a exigir o plano Blaze (cartão de
+> crédito) mesmo dentro da faixa gratuita, e o Head recusou cadastrar
+> cartão. O upload de arquivo pelo Storage (passo 1 do guia abaixo) **não
+> se aplica mais** — arquivos agora vêm de duas fontes externas ao
+> Firebase, descritas no lugar do antigo passo 1:
+> - **PDFs (`livros`, e futuramente `textos`):** hospedados no Google
+>   Drive pessoal do Head, pasta compartilhada como "Qualquer pessoa com
+>   o link — Leitor". `file_url` recebe o link de compartilhamento do
+>   Drive (formato `https://drive.google.com/file/d/{id}/view?...`) — o
+>   app abre isso externamente (`Linking.openURL`), o que já é como o
+>   código atual trata PDF (não muda nada no app).
+> - **Áudio próprio (`musicas` com `source: "upload"`):** versionado no
+>   repositório em `app/content-src/` (nome de arquivo sem acento/espaço)
+>   e servido estaticamente pelo próprio Cloudflare Pages (adicionar
+>   passo no build: copiar `content-src/` para dentro de `dist/` depois
+>   do `expo export`) — nunca no Google Drive, que não garante os headers
+>   necessários para tocar áudio embutido de forma confiável. `file_url`
+>   vira `https://mensageiros-da-paz.pages.dev/content/{categoria}/{arquivo}`.
+> - Isso não exige nenhuma mudança no schema (`file_url` já era uma string
+>   genérica) nem no app (`file_url` já era tratado como URL externa).
 
 ### 4.1 Guia rápido — como o Head edita pelo Firebase Console
 
