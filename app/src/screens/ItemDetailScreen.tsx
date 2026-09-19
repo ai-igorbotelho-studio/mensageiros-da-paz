@@ -4,7 +4,14 @@ import { Audio, AVPlaybackStatus } from "expo-av";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { ErrorState } from "@/components/ErrorState";
+import { SpotifyEmbed } from "@/components/SpotifyEmbed";
 import type { RootStackParamList } from "@/types";
+
+/** Extrai o id da faixa de uma URL do Spotify (open.spotify.com/track/{id} ou /embed/track/{id}). */
+function extractSpotifyTrackId(url: string): string | null {
+  const match = url.match(/track\/([a-zA-Z0-9]+)/);
+  return match ? match[1] : null;
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, "ItemDetail">;
 
@@ -27,6 +34,7 @@ export function ItemDetailScreen({ route }: Props) {
   }, [sound]);
 
   async function togglePlayback() {
+    if (!item.fileUrl) return;
     setPlaybackError(false);
     try {
       if (!sound) {
@@ -57,7 +65,25 @@ export function ItemDetailScreen({ route }: Props) {
         <Text style={styles.description}>{item.description}</Text>
       ) : null}
 
-      {item.fileType === "image" ? (
+      {item.source === "spotify" && item.spotifyUrl ? (
+        (() => {
+          const trackId = extractSpotifyTrackId(item.spotifyUrl);
+          return trackId ? (
+            <SpotifyEmbed trackId={trackId} />
+          ) : (
+            <Pressable
+              style={styles.playButton}
+              onPress={() => Linking.openURL(item.spotifyUrl!)}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir no Spotify"
+            >
+              <Text style={styles.playButtonText}>Abrir no Spotify</Text>
+            </Pressable>
+          );
+        })()
+      ) : null}
+
+      {item.source === "upload" && item.fileType === "image" && item.fileUrl ? (
         <Image
           source={{ uri: item.fileUrl }}
           style={styles.image}
@@ -66,7 +92,7 @@ export function ItemDetailScreen({ route }: Props) {
         />
       ) : null}
 
-      {item.fileType === "audio" ? (
+      {item.source === "upload" && item.fileType === "audio" && item.fileUrl ? (
         <View style={styles.audioBlock}>
           {playbackError ? (
             <ErrorState
@@ -88,14 +114,14 @@ export function ItemDetailScreen({ route }: Props) {
         </View>
       ) : null}
 
-      {item.fileType === "pdf" ? (
+      {item.source === "upload" && item.fileType === "pdf" && item.fileUrl ? (
         <View style={styles.pdfBlock}>
           <Text style={styles.description}>
             Este documento é um PDF. Toque abaixo para abri-lo.
           </Text>
           <Pressable
             style={styles.playButton}
-            onPress={() => Linking.openURL(item.fileUrl)}
+            onPress={() => Linking.openURL(item.fileUrl!)}
             accessibilityRole="button"
             accessibilityLabel="Abrir PDF"
           >

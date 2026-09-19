@@ -13,6 +13,14 @@ só para push, ao contrário de uma decisão anterior já superada. iOS via
 Expo Go não recebe notificações reais por enquanto; a tela de Configurações
 avisa isso ao usuário.
 
+**Músicas do Spotify (atualizado 2026-09-19):** itens com `source: "spotify"`
+(ver `../docs/BACKEND-ARCHITECTURE.md` seção 2.2) mostram o player embutido
+do Spotify (`react-native-webview` no app nativo, `<iframe>` direto na
+versão web — `src/components/SpotifyEmbed.tsx` e `.web.tsx`). **O player
+embutido via WebView só funciona em build nativo com EAS (dev client) —
+não funciona no Expo Go puro**, porque `react-native-webview` é um módulo
+nativo. Na versão web (Cloudflare Pages) funciona sem restrição.
+
 ## Estrutura
 
 ```
