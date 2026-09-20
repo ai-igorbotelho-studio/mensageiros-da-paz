@@ -169,6 +169,8 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     color: colors.textPrimary,
     textAlign: "center",
+    maxWidth: 420,
+    alignSelf: "center",
   },
   buttonArea: {
     flex: 2,
