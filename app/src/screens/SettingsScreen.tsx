@@ -19,9 +19,10 @@ type Props = NativeStackScreenProps<RootStackParamList, "Settings">;
  * apenas para abrigar o toggle de notificações exigido por
  * docs/BACKEND-ARCHITECTURE.md seção 5.
  *
- * Ponto de entrada: ícone de engrenagem no cabeçalho da tela "Mensageiros"
- * (ver app/src/navigation/RootNavigator.tsx). A Home permanece minimalista
- * (Prática da Semana + botão MENSAGEIROS), sem nenhum elemento novo.
+ * Ponto de entrada: ícone de engrenagem no cabeçalho da Home (ver
+ * app/src/navigation/RootNavigator.tsx) — desde 2026-09-21 a Home mescla
+ * a Prática da Semana com os botões de categoria (antigo hub
+ * "Mensageiros"), então o ícone de Configurações migrou para cá.
  *
  * LACUNA registrada: esta tela não tem wireframe/aprovação formal de
  * `ux-architect`/`ui-designer`. Está implementada com o mínimo de

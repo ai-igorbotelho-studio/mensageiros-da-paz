@@ -44,7 +44,6 @@ export interface PracticeOfTheWeek {
 
 export type RootStackParamList = {
   Home: undefined;
-  Mensageiros: undefined;
   ContentList: { category: ContentCategory; title: string };
   ItemDetail: { item: ContentItem };
   Settings: undefined;

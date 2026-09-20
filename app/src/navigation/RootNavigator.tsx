@@ -4,7 +4,6 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize } from "@/theme/tokens";
 import { HomeScreen } from "@/screens/HomeScreen";
-import { MensageirosScreen } from "@/screens/MensageirosScreen";
 import { ContentListScreen } from "@/screens/ContentListScreen";
 import { ItemDetailScreen } from "@/screens/ItemDetailScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
@@ -25,7 +24,6 @@ const linking = {
   config: {
     screens: {
       Home: "",
-      Mensageiros: "mensageiros",
       Settings: "configuracoes",
       Admin: "admin",
     },
@@ -34,10 +32,12 @@ const linking = {
 
 /**
  * Navegação estritamente hierárquica (sem tabs), conforme
- * docs/UX-ARCHITECTURE.md seção 3:
- * Home -> Mensageiros -> Orações | Músicas | Textos -> detalhe do item.
- * "Voltar" usa os gestos/botões nativos de cada SO (comportamento padrão
- * do native-stack, sem customização que quebre a convenção).
+ * docs/UX-ARCHITECTURE.md seção 3, mesclada (2026-09-21, a pedido do
+ * Head) para: Home (Prática da Semana + Orações/Músicas/Textos/Livros na
+ * mesma página) -> detalhe do item. O hub intermediário "Mensageiros"
+ * foi removido — a Home assumiu esse papel. "Voltar" usa os
+ * gestos/botões nativos de cada SO (comportamento padrão do
+ * native-stack, sem customização que quebre a convenção).
  */
 export function RootNavigator() {
   return (
@@ -55,14 +55,13 @@ export function RootNavigator() {
           title: "Mensageiros da Paz",
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen
-          name="Mensageiros"
-          component={MensageirosScreen}
+          name="Home"
+          component={HomeScreen}
           options={({ navigation }) => ({
             // Ponto de entrada único para Configurações: um ícone discreto
-            // no cabeçalho de "Mensageiros" (não na Home, que permanece
-            // minimalista conforme docs/UX-ARCHITECTURE.md/CREATIVE-DIRECTION.md).
+            // no cabeçalho da Home, já que o hub "Mensageiros" foi mesclado
+            // aqui e deixou de existir como tela separada.
             headerRight: () => (
               <Pressable
                 onPress={() => navigation.navigate("Settings")}

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { fetchPracticeOfTheWeek } from "@/firebase/firestore";
 import { LoadingState } from "@/components/LoadingState";
@@ -12,9 +13,22 @@ const CACHE_KEY = "practice_of_the_week_cache";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
+const OPTIONS: Array<{
+  label: string;
+  category: "oracoes" | "musicas" | "textos" | "livros";
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+}> = [
+  { label: "Orações", category: "oracoes", icon: "hands-pray" },
+  { label: "Músicas", category: "musicas", icon: "music-note-outline" },
+  { label: "Textos", category: "textos", icon: "text-box-outline" },
+  { label: "Livros", category: "livros", icon: "book-open-page-variant-outline" },
+];
+
 /**
- * Home minimalista: só a Prática da Semana + botão "MENSAGEIROS".
- * Ver docs/UX-ARCHITECTURE.md seção 1.1 e 5 (o que NÃO entra aqui).
+ * Home: Prática da Semana + os quatro botões de categoria na mesma
+ * página (Orações/Músicas/Textos/Livros), a pedido do Head (2026-09-21) —
+ * substitui o passo intermediário do hub "Mensageiros" por um único
+ * botão. Ver docs/UX-ARCHITECTURE.md seção 1.1 e 5 (o que NÃO entra aqui).
  */
 export function HomeScreen({ navigation }: Props) {
   const [text, setText] = useState<string | null>(null);
@@ -77,17 +91,33 @@ export function HomeScreen({ navigation }: Props) {
           {text || "Nenhuma prática publicada no momento."}
         </Text>
       </View>
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={() => navigation.navigate("Mensageiros")}
-        accessibilityRole="button"
-        accessibilityLabel="Mensageiros"
-      >
-        <Text style={styles.buttonText}>MENSAGEIROS</Text>
-      </Pressable>
+      <View style={styles.buttonGroup}>
+        {OPTIONS.map((option) => (
+          <Pressable
+            key={option.category}
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() =>
+              navigation.navigate("ContentList", {
+                category: option.category,
+                title: option.label,
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel={option.label}
+          >
+            <MaterialCommunityIcons
+              name={option.icon}
+              size={20}
+              color={colors.surface}
+              style={styles.buttonIcon}
+            />
+            <Text style={styles.buttonText}>{option.label}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
@@ -122,22 +152,36 @@ const styles = StyleSheet.create({
     lineHeight: 36,
     color: colors.textPrimary,
   },
+  buttonGroup: {
+    alignItems: "center",
+    gap: spacing.md,
+  },
   button: {
-    minHeight: minTouchSize,
+    minHeight: minTouchSize + 12,
+    width: "100%",
+    maxWidth: 280,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   buttonPressed: {
     opacity: 0.85,
   },
+  buttonIcon: {
+    marginRight: spacing.xs,
+  },
   buttonText: {
     fontFamily: fonts.bodyFallback,
-    fontWeight: "700",
-    fontSize: 16,
-    letterSpacing: 1,
+    fontWeight: "600",
+    fontSize: 15,
+    letterSpacing: 0.2,
     color: colors.surface,
+    textAlign: "center",
   },
 });
