@@ -44,25 +44,34 @@ export function HomeScreen({ navigation }: Props) {
     load();
   }, [load]);
 
+  const emblem = (
+    <Image
+      source={require("../../assets/branding/chama-tripla.png")}
+      style={styles.emblem}
+      resizeMode="contain"
+      accessibilityLabel="Emblema da Chama Tripla"
+    />
+  );
+
   if (loading) return <LoadingState />;
   if (error) {
     return (
-      <ErrorState
-        message="Não conseguimos carregar a prática desta semana. Tente novamente em instantes."
-        onRetry={load}
-      />
+      <View style={styles.container}>
+        <View style={styles.content}>
+          {emblem}
+          <ErrorState
+            message="Não conseguimos carregar a prática desta semana. Tente novamente em instantes."
+            onRetry={load}
+          />
+        </View>
+      </View>
     );
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Image
-          source={require("../../assets/branding/chama-tripla.png")}
-          style={styles.emblem}
-          resizeMode="contain"
-          accessibilityLabel="Emblema da Chama Tripla"
-        />
+        {emblem}
         <Text style={styles.label}>Prática da semana</Text>
         <Text style={styles.practiceText}>
           {text || "Nenhuma prática publicada no momento."}
