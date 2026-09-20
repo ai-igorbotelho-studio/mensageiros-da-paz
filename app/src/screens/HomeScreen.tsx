@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
@@ -42,10 +35,12 @@ const OPTIONS: Array<{
  * substitui o passo intermediário do hub "Mensageiros" por um único
  * botão. Ver docs/UX-ARCHITECTURE.md seção 1.1 e 5 (o que NÃO entra aqui).
  *
- * Layout compacto (2026-09-21): emblema pequeno no topo, texto da
- * prática com fonte menor para sempre caber sem cortar, botões
- * reduzidos, tudo dentro de um ScrollView — garante que nada fica
- * cortado mesmo em telas pequenas, sem depender de altura fixa.
+ * Layout espalhado pela altura da página (2026-09-21, a pedido do
+ * Head): emblema fixo perto do topo, texto da prática centralizado
+ * numa área fixa no meio, botões numa área fixa perto do rodapé —
+ * três blocos com `flex` próprios (não tudo empilhado/compacto no
+ * centro), com fontes e botões pequenos o bastante para caber sem
+ * cortar.
  */
 export function HomeScreen({ navigation }: Props) {
   const [text, setText] = useState<string | null>(null);
@@ -100,16 +95,15 @@ export function HomeScreen({ navigation }: Props) {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-    >
-      {emblem}
-      <Text style={styles.label}>Prática da semana</Text>
-      <Text style={styles.practiceText}>
-        {text || "Nenhuma prática publicada no momento."}
-      </Text>
-      <View style={styles.buttonGroup}>
+    <View style={styles.container}>
+      <View style={styles.emblemArea}>{emblem}</View>
+      <View style={styles.textArea}>
+        <Text style={styles.label}>Prática da semana</Text>
+        <Text style={styles.practiceText}>
+          {text || "Nenhuma prática publicada no momento."}
+        </Text>
+      </View>
+      <View style={styles.buttonArea}>
         {OPTIONS.map((option) => (
           <Pressable
             key={option.category}
@@ -131,7 +125,7 @@ export function HomeScreen({ navigation }: Props) {
           </Pressable>
         ))}
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -139,42 +133,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
   },
   content: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: spacing.xl,
   },
-  scrollContent: {
-    flexGrow: 1,
+  emblemArea: {
+    flex: 2,
+    justifyContent: "flex-start",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
+    paddingTop: spacing.sm,
   },
   emblem: {
-    width: 60,
-    height: 93,
+    width: 84,
+    height: 130,
+  },
+  textArea: {
+    flex: 3,
+    justifyContent: "center",
+    alignItems: "center",
   },
   label: {
     fontFamily: fonts.bodyFallback,
     fontSize: 13,
     color: colors.textSecondary,
     textAlign: "center",
+    marginBottom: spacing.sm,
   },
   practiceText: {
     fontFamily: fonts.displayFallback,
-    fontSize: 19,
-    lineHeight: 26,
+    fontSize: 20,
+    lineHeight: 28,
     color: colors.textPrimary,
     textAlign: "center",
   },
-  buttonGroup: {
+  buttonArea: {
+    flex: 2,
+    justifyContent: "flex-end",
     alignItems: "center",
     gap: spacing.xs,
-    marginTop: spacing.xs,
+    paddingBottom: spacing.sm,
   },
   button: {
     minHeight: minTouchSize - 8,
