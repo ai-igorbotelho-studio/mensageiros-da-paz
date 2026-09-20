@@ -58,6 +58,7 @@ export async function fetchItemsByCategory(
       description: data.description ?? null,
       category: data.category,
       source: data.source ?? "upload",
+      text: data.text ?? null,
       fileUrl: data.file_url ?? null,
       fileType: data.file_type ?? null,
       mimeType: data.mime_type ?? null,

@@ -22,6 +22,7 @@ import {
   watchAdminAuth,
   type ItemFormValues,
 } from "@/firebase/admin";
+import { seedInitialContent } from "@/firebase/seedContent";
 import type {
   ContentCategory,
   ContentItem,
@@ -75,6 +76,7 @@ const EMPTY_FORM: ItemFormValues = {
   description: "",
   category: "livros",
   source: "upload",
+  text: "",
   fileUrl: "",
   fileType: "pdf",
   streamingProvider: "spotify",
@@ -167,6 +169,29 @@ function AdminDashboard({ user }: { user: User }) {
   const [form, setForm] = useState<ItemFormValues>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [seedRunning, setSeedRunning] = useState(false);
+  const [seedResult, setSeedResult] = useState<string | null>(null);
+
+  async function runSeed() {
+    setSeedRunning(true);
+    setSeedResult(null);
+    try {
+      const { created, failed } = await seedInitialContent(
+        user.email ?? "admin",
+        (done, total) => setSeedResult(`Importando… ${done}/${total}`)
+      );
+      setSeedResult(
+        failed > 0
+          ? `${created} itens importados, ${failed} falharam.`
+          : `${created} itens importados com sucesso.`
+      );
+      loadItems();
+    } catch {
+      setSeedResult("Falha ao importar. Tente novamente.");
+    } finally {
+      setSeedRunning(false);
+    }
+  }
 
   useEffect(() => {
     adminGetPracticeOfTheWeek()
@@ -203,6 +228,7 @@ function AdminDashboard({ user }: { user: User }) {
       description: item.description ?? "",
       category: item.category,
       source: item.source,
+      text: item.text ?? "",
       fileUrl: item.fileUrl ?? "",
       fileType: item.fileType ?? "pdf",
       streamingProvider: item.streamingProvider ?? "spotify",
@@ -223,12 +249,13 @@ function AdminDashboard({ user }: { user: User }) {
       setFormError("Título é obrigatório.");
       return;
     }
-    if (form.source === "upload" && !form.fileUrl.trim()) {
-      setFormError("Cole o link do arquivo (Drive, Dropbox, OneDrive, Cloudflare, etc.).");
+    const hasText = form.text.trim().length > 0;
+    if (!hasText && form.source === "upload" && !form.fileUrl.trim()) {
+      setFormError("Cole o link do arquivo (Drive, Dropbox, OneDrive, Cloudflare, etc.) ou preencha o texto direto.");
       return;
     }
-    if (form.source === "streaming" && !form.streamingUrl.trim()) {
-      setFormError("Cole o link da faixa/plataforma de streaming.");
+    if (!hasText && form.source === "streaming" && !form.streamingUrl.trim()) {
+      setFormError("Cole o link da faixa/plataforma de streaming ou preencha o texto direto.");
       return;
     }
     try {
@@ -258,6 +285,29 @@ function AdminDashboard({ user }: { user: User }) {
         </Pressable>
       </View>
       <Text style={styles.helper}>Logado como {user.email}</Text>
+
+      {/* Importação única do conteúdo inicial (8 orações, 18 livros, 1
+          música) — ver src/firebase/seedContent.ts. Roda só uma vez;
+          clicar de novo duplica os itens, então confira a lista antes. */}
+      <View style={styles.seedBox}>
+        <Text style={styles.sectionTitle}>Importar conteúdo inicial</Text>
+        <Text style={styles.helper}>
+          Cadastra de uma vez as 8 orações, os 18 livros e a música
+          "Guerreiro do Bem" já documentados. Clique só uma vez — clicar de
+          novo duplica os itens.
+        </Text>
+        <Pressable
+          style={[styles.primaryButton, seedRunning && styles.buttonDisabled]}
+          onPress={runSeed}
+          disabled={seedRunning}
+          accessibilityRole="button"
+        >
+          <Text style={styles.primaryButtonText}>
+            {seedRunning ? "Importando…" : "Importar conteúdo inicial"}
+          </Text>
+        </Pressable>
+        {seedResult ? <Text style={styles.helper}>{seedResult}</Text> : null}
+      </View>
 
       {/* Prática da Semana */}
       <Text style={styles.sectionTitle}>Prática da Semana</Text>
@@ -374,6 +424,19 @@ function AdminDashboard({ user }: { user: User }) {
           </Pressable>
         ))}
       </View>
+
+      <Text style={styles.fieldHint}>
+        Texto direto (opcional — para orações/textos exibidos na hora, sem
+        precisar de arquivo)
+      </Text>
+      <TextInput
+        style={[styles.input, styles.textArea]}
+        placeholder="Cole aqui o texto completo, se houver"
+        placeholderTextColor={colors.textSecondary}
+        value={form.text}
+        onChangeText={(text) => setForm((f) => ({ ...f, text }))}
+        multiline
+      />
 
       <View style={styles.categoryRow}>
         {(["upload", "streaming"] as ContentSource[]).map((s) => (
@@ -603,6 +666,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginTop: spacing.sm,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  seedBox: {
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.xs,
   },
   primaryButtonText: {
     fontFamily: fonts.bodyFallback,

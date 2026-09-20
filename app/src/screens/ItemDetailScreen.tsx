@@ -101,6 +101,8 @@ export function ItemDetailScreen({ route }: Props) {
         <Text style={styles.description}>{item.description}</Text>
       ) : null}
 
+      {item.text ? <Text style={styles.itemText}>{item.text}</Text> : null}
+
       {item.source === "streaming" && item.streamingUrl ? (
         (() => {
           const isSpotify = item.streamingProvider === "spotify";
@@ -229,6 +231,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  itemText: {
+    fontFamily: fonts.displayFallback,
+    fontSize: 18,
+    lineHeight: 28,
+    color: colors.textPrimary,
     marginBottom: spacing.md,
   },
   image: {

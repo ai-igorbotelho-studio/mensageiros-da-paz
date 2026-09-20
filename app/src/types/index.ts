@@ -25,6 +25,9 @@ export interface ContentItem {
   description: string | null;
   category: ContentCategory;
   source: ContentSource;
+  // presente quando o conteúdo é texto puro (ex.: orações), exibido
+  // direto na tela do item em vez de abrir um arquivo/link externo
+  text: string | null;
   // presentes somente quando source === "upload"
   fileUrl: string | null;
   fileType: FileType | null;

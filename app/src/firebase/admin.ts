@@ -85,6 +85,7 @@ export async function adminListItemsByCategory(
       description: data.description ?? null,
       category: data.category,
       source: data.source ?? "upload",
+      text: data.text ?? null,
       fileUrl: data.file_url ?? null,
       fileType: data.file_type ?? null,
       mimeType: data.mime_type ?? null,
@@ -102,6 +103,9 @@ export interface ItemFormValues {
   description: string;
   category: ContentCategory;
   source: ContentSource;
+  // texto puro (ex.: orações) — independente de source, coexiste com
+  // upload/streaming quando o item também tiver um arquivo/link
+  text: string;
   fileUrl: string;
   fileType: FileType;
   streamingProvider: StreamingProvider;
@@ -125,6 +129,7 @@ export async function adminCreateItem(values: ItemFormValues, adminEmail: string
     description: values.description || null,
     category: values.category,
     source: values.source,
+    text: values.text || null,
     file_url: isUpload ? values.fileUrl : null,
     file_type: isUpload ? values.fileType : null,
     mime_type: isUpload ? mimeTypeFor(values.fileType) : null,
@@ -150,6 +155,7 @@ export async function adminUpdateItem(
     description: values.description || null,
     category: values.category,
     source: values.source,
+    text: values.text || null,
     file_url: isUpload ? values.fileUrl : null,
     file_type: isUpload ? values.fileType : null,
     mime_type: isUpload ? mimeTypeFor(values.fileType) : null,
