@@ -111,7 +111,7 @@ export function AdminScreen() {
 
   if (!user) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loginContainer}>
         <Text style={styles.title}>Admin</Text>
         <Text style={styles.helper}>
           Entre com a conta criada no Firebase Authentication.
@@ -509,6 +509,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loginContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: spacing.lg,
   },
   scrollContent: {
     padding: spacing.lg,
