@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { fetchPracticeOfTheWeek } from "@/firebase/firestore";
 import { LoadingState } from "@/components/LoadingState";
@@ -16,12 +15,12 @@ type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 const OPTIONS: Array<{
   label: string;
   category: "oracoes" | "musicas" | "textos" | "livros";
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon: string;
 }> = [
-  { label: "Orações", category: "oracoes", icon: "hands-pray" },
-  { label: "Músicas", category: "musicas", icon: "music-note-outline" },
-  { label: "Textos", category: "textos", icon: "text-box-outline" },
-  { label: "Livros", category: "livros", icon: "book-open-page-variant-outline" },
+  { label: "Orações", category: "oracoes", icon: "🙏" },
+  { label: "Músicas", category: "musicas", icon: "🎵" },
+  { label: "Textos", category: "textos", icon: "📄" },
+  { label: "Livros", category: "livros", icon: "📖" },
 ];
 
 /**
@@ -108,12 +107,7 @@ export function HomeScreen({ navigation }: Props) {
             accessibilityRole="button"
             accessibilityLabel={option.label}
           >
-            <MaterialCommunityIcons
-              name={option.icon}
-              size={20}
-              color={colors.surface}
-              style={styles.buttonIcon}
-            />
+            <Text style={styles.buttonIcon}>{option.icon}</Text>
             <Text style={styles.buttonText}>{option.label}</Text>
           </Pressable>
         ))}
@@ -177,6 +171,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   buttonIcon: {
+    fontSize: 16,
     marginRight: spacing.xs,
   },
   buttonText: {
