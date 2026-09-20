@@ -88,6 +88,7 @@ export function AdminScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => watchAdminAuth(setUser), []);
 
@@ -124,14 +125,27 @@ export function AdminScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Senha"
-          placeholderTextColor={colors.textSecondary}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.passwordRow}>
+          <TextInput
+            style={[styles.input, styles.passwordInput]}
+            placeholder="Senha"
+            placeholderTextColor={colors.textSecondary}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+          />
+          <Pressable
+            style={styles.showPasswordButton}
+            onPress={() => setShowPassword((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? "Ocultar senha" : "Mostrar senha"}
+          >
+            <Text style={styles.showPasswordText}>
+              {showPassword ? "Ocultar" : "Mostrar"}
+            </Text>
+          </Pressable>
+        </View>
         {loginError ? <Text style={styles.error}>{loginError}</Text> : null}
         <Pressable style={styles.primaryButton} onPress={handleLogin} accessibilityRole="button">
           <Text style={styles.primaryButtonText}>Entrar</Text>
@@ -554,6 +568,26 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 96,
     textAlignVertical: "top",
+  },
+  passwordRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  passwordInput: {
+    flex: 1,
+  },
+  showPasswordButton: {
+    minHeight: minTouchSize,
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  showPasswordText: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 14,
+    color: colors.accent,
+    fontWeight: "600",
   },
   primaryButton: {
     minHeight: minTouchSize,
