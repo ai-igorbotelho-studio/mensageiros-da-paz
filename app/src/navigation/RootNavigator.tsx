@@ -47,6 +47,7 @@ export function RootNavigator() {
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.primary,
           headerTitleStyle: { fontFamily: fonts.bodyFallback },
+          headerTitleAlign: "center",
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
           // Cabeçalho fixo "Mensageiros da Paz" em todas as páginas, a
