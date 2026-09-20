@@ -1,46 +1,47 @@
 /**
- * Tokens de design derivados da paleta "Mystery and transcendence in
- * education" (esquema Goethe — Zur Farbenlehre, 1810), aplicada ao
- * Mensageiros da Paz a pedido do Head em 2026-09-21. Ver DECISIONS.md.
+ * Tokens de design derivados da paleta "Ceremony and legacy in education"
+ * (esquema Goethe — Zur Farbenlehre, 1810), aplicada ao Mensageiros da Paz
+ * a pedido do Head em 2026-09-21, substituindo a paleta "Mystery and
+ * transcendence" anterior (fundo roxo reprovado). Ver DECISIONS.md.
  * Nunca preto puro (#000) nem branco puro (#FFF).
  */
 
 export const colors = {
-  primary: "#4B4C00", // Sprout (verde-oliva escuro)
-  primaryLight: "#838338", // Mustard
-  background: "#D2D8FF", // Pale violet
-  surface: "#E7E9FF", // tinta clara de Pale violet, para cartões/inputs
-  accent: "#FC9997", // Sealing wax
-  textPrimary: "#270000", // Deep terracotta
-  textSecondary: "#5C4A2E", // tom escurecido de Mustard, para texto secundário legível
-  success: "#4B4C00", // Sprout
-  darkBackground: "#270000", // Deep terracotta
+  primary: "#803C7A", // Mulberry (violeta)
+  primaryLight: "#AF65A8", // Magenta
+  background: "#FFEDDF", // Pale apricot
+  surface: "#FFF6EF", // tinta clara de Pale apricot, para cartões/inputs
+  accent: "#3BCFA9", // Sage
+  textPrimary: "#00170C", // Deep mint (quase preto esverdeado)
+  textSecondary: "#6B4463", // tom escurecido de Mulberry, para texto secundário legível
+  success: "#3BCFA9", // Sage
+  darkBackground: "#00170C", // Deep mint
 } as const;
 
 export const darkColors = {
   ...colors,
   background: colors.darkBackground,
-  surface: "#3A1414",
-  textPrimary: "#D2D8FF",
-  textSecondary: "#E3B8B6",
+  surface: "#122A1F",
+  textPrimary: "#FFEDDF",
+  textSecondary: "#D89ED1",
 } as const;
 
 /**
- * Space Grotesk (títulos/headline) e Redaction (corpo/texto) — paleta
- * "Mystery and transcendence in education", esquema Goethe. Carregadas via
- * <link> de Google Fonts (Space Grotesk) e Fontsource/jsDelivr (Redaction,
- * League Mono) injetado só na web em `App.tsx`
- * (`loadWebFonts` em `src/theme/loadWebFonts.ts`) — em nativo (Expo Go/EAS)
- * ainda não há bundling dos arquivos de fonte, então o RN cai no fallback
- * do sistema automaticamente quando a fonte não está registrada.
+ * Bodoni Moda (títulos/headline) e Lexend (corpo/texto) — paleta "Ceremony
+ * and legacy in education", esquema Goethe. As três (Bodoni Moda, Lexend,
+ * DM Mono) são Google Fonts, carregadas via <link> só na web em
+ * `App.tsx` (`loadWebFonts` em `src/theme/loadWebFonts.ts`) — em nativo
+ * (Expo Go/EAS) ainda não há bundling dos arquivos de fonte, então o RN
+ * cai no fallback do sistema automaticamente quando a fonte não está
+ * registrada.
  */
 export const fonts = {
-  display: "Space Grotesk",
-  displayFallback: "Space Grotesk, system-ui, sans-serif",
-  body: "Redaction",
-  bodyMedium: "Redaction",
-  bodyFallback: "Redaction, Georgia, serif",
-  mono: "League Mono, ui-monospace, monospace",
+  display: "Bodoni Moda",
+  displayFallback: "Bodoni Moda, Georgia, serif",
+  body: "Lexend",
+  bodyMedium: "Lexend",
+  bodyFallback: "Lexend, system-ui, sans-serif",
+  mono: "DM Mono, ui-monospace, monospace",
 };
 
 export const spacing = {
@@ -56,6 +57,7 @@ export const radii = {
   sm: 8,
   md: 16,
   lg: 24,
+  pill: 999, // botões sempre em formato de pílula, a pedido do Head (2026-09-21)
 };
 
 export const minTouchSize = 44; // a11y — área mínima de toque conforme direção criativa
