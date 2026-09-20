@@ -133,6 +133,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: "center",
+    alignItems: "center",
   },
   emblem: {
     width: 96,
@@ -145,21 +146,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: spacing.md,
+    textAlign: "center",
   },
   practiceText: {
     fontFamily: fonts.displayFallback,
     fontSize: 26,
     lineHeight: 36,
     color: colors.textPrimary,
+    textAlign: "center",
   },
   buttonGroup: {
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   button: {
-    minHeight: minTouchSize + 12,
+    minHeight: minTouchSize,
     width: "100%",
-    maxWidth: 280,
+    maxWidth: 220,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -167,8 +170,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.primaryLight,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
   },
   buttonPressed: {
     opacity: 0.85,
@@ -179,7 +182,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "600",
-    fontSize: 15,
+    fontSize: 14,
     letterSpacing: 0.2,
     color: colors.surface,
     textAlign: "center",

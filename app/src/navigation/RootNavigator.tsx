@@ -43,7 +43,7 @@ export function RootNavigator() {
   return (
     <NavigationContainer linking={linking}>
       <Stack.Navigator
-        screenOptions={{
+        screenOptions={({ navigation }) => ({
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.primary,
           headerTitleStyle: { fontFamily: fonts.bodyFallback },
@@ -51,9 +51,28 @@ export function RootNavigator() {
           contentStyle: { backgroundColor: colors.background },
           // Cabeçalho fixo "Mensageiros da Paz" em todas as páginas, a
           // pedido do Head (2026-09-21) — substitui os títulos por tela
-          // usados antes (nome da subpágina/item).
-          title: "Mensageiros da Paz",
-        }}
+          // usados antes (nome da subpágina/item). Também funciona como
+          // botão de voltar para a Home a partir de qualquer tela.
+          headerTitle: () => (
+            <Pressable
+              onPress={() => navigation.navigate("Home")}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Ir para a Home"
+            >
+              <Text
+                style={{
+                  fontFamily: fonts.bodyFallback,
+                  fontSize: 17,
+                  fontWeight: "700",
+                  color: colors.primary,
+                }}
+              >
+                Mensageiros da Paz
+              </Text>
+            </Pressable>
+          ),
+        })}
       >
         <Stack.Screen
           name="Home"
