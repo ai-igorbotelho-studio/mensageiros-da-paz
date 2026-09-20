@@ -42,6 +42,7 @@ export interface ContentItem {
 
 export interface PracticeOfTheWeek {
   text: string;
+  inspiration: string;
   updatedAt: number | null;
 }
 

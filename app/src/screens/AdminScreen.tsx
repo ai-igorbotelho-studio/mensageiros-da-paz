@@ -23,6 +23,7 @@ import {
   type ItemFormValues,
 } from "@/firebase/admin";
 import { seedInitialContent } from "@/firebase/seedContent";
+import { syncPracticeToSheet } from "@/integrations/practiceSheetSync";
 import type {
   ContentCategory,
   ContentItem,
@@ -161,6 +162,7 @@ export function AdminScreen() {
 
 function AdminDashboard({ user }: { user: User }) {
   const [practiceText, setPracticeText] = useState("");
+  const [practiceInspiration, setPracticeInspiration] = useState("");
   const [practiceLoading, setPracticeLoading] = useState(true);
   const [practiceSaved, setPracticeSaved] = useState(false);
   const [category, setCategory] = useState<ContentCategory>("livros");
@@ -195,7 +197,10 @@ function AdminDashboard({ user }: { user: User }) {
 
   useEffect(() => {
     adminGetPracticeOfTheWeek()
-      .then(setPracticeText)
+      .then(({ text, inspiration }) => {
+        setPracticeText(text);
+        setPracticeInspiration(inspiration);
+      })
       .finally(() => setPracticeLoading(false));
   }, []);
 
@@ -214,8 +219,13 @@ function AdminDashboard({ user }: { user: User }) {
   async function savePractice() {
     setPracticeSaved(false);
     try {
-      await adminSetPracticeOfTheWeek(practiceText, user.email ?? "admin");
+      await adminSetPracticeOfTheWeek(practiceText, practiceInspiration, user.email ?? "admin");
       setPracticeSaved(true);
+      syncPracticeToSheet({
+        practiceText,
+        inspiration: practiceInspiration,
+        publishedBy: user.email ?? "admin",
+      });
     } catch {
       // erro silencioso simples — admin interno, baixo volume de uso
     }
@@ -324,6 +334,20 @@ function AdminDashboard({ user }: { user: User }) {
             }}
             multiline
             placeholder="Texto da prática desta semana"
+            placeholderTextColor={colors.textSecondary}
+          />
+          <Text style={styles.fieldHint}>
+            Inspiração (opcional — fica só no registro interno/planilha, não
+            aparece no app)
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={practiceInspiration}
+            onChangeText={(t) => {
+              setPracticeInspiration(t);
+              setPracticeSaved(false);
+            }}
+            placeholder="Ex.: versículo, autor, referência"
             placeholderTextColor={colors.textSecondary}
           />
           <Pressable style={styles.primaryButton} onPress={savePractice} accessibilityRole="button">

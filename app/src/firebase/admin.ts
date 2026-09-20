@@ -59,11 +59,16 @@ export async function adminSignOut(): Promise<void> {
   await signOut(auth);
 }
 
-export async function adminSetPracticeOfTheWeek(text: string, adminEmail: string): Promise<void> {
+export async function adminSetPracticeOfTheWeek(
+  text: string,
+  inspiration: string,
+  adminEmail: string
+): Promise<void> {
   if (!firebaseReady || !db) throw new Error("Firebase não configurado");
   const ref = doc(db, "config", "practice_of_the_week");
   await setDoc(ref, {
     text,
+    inspiration: inspiration || null,
     updated_at: serverTimestamp(),
     updated_by: adminEmail,
   });
@@ -172,8 +177,10 @@ export async function adminDeleteItem(id: string): Promise<void> {
   await deleteDoc(doc(db, "items", id));
 }
 
-export async function adminGetPracticeOfTheWeek(): Promise<string> {
+export async function adminGetPracticeOfTheWeek(): Promise<{ text: string; inspiration: string }> {
   if (!firebaseReady || !db) throw new Error("Firebase não configurado");
   const snap = await getDoc(doc(db, "config", "practice_of_the_week"));
-  return snap.exists() ? snap.data().text ?? "" : "";
+  if (!snap.exists()) return { text: "", inspiration: "" };
+  const data = snap.data();
+  return { text: data.text ?? "", inspiration: data.inspiration ?? "" };
 }

@@ -27,11 +27,12 @@ export async function fetchPracticeOfTheWeek(): Promise<PracticeOfTheWeek> {
   const ref = doc(db, "config", "practice_of_the_week");
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    return { text: "", updatedAt: null };
+    return { text: "", inspiration: "", updatedAt: null };
   }
   const data = snap.data();
   return {
     text: data.text ?? "",
+    inspiration: data.inspiration ?? "",
     updatedAt: data.updated_at?.toMillis?.() ?? null,
   };
 }
