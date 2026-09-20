@@ -6,6 +6,12 @@ import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { fetchPracticeOfTheWeek } from "@/firebase/firestore";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
+import {
+  BookIcon,
+  MusicIcon,
+  PrayerIcon,
+  TextIcon,
+} from "@/components/CategoryIcons";
 import type { RootStackParamList } from "@/types";
 
 const CACHE_KEY = "practice_of_the_week_cache";
@@ -15,12 +21,12 @@ type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 const OPTIONS: Array<{
   label: string;
   category: "oracoes" | "musicas" | "textos" | "livros";
-  icon: string;
+  Icon: typeof PrayerIcon;
 }> = [
-  { label: "Orações", category: "oracoes", icon: "🙏" },
-  { label: "Músicas", category: "musicas", icon: "🎵" },
-  { label: "Textos", category: "textos", icon: "📄" },
-  { label: "Livros", category: "livros", icon: "📖" },
+  { label: "Orações", category: "oracoes", Icon: PrayerIcon },
+  { label: "Músicas", category: "musicas", Icon: MusicIcon },
+  { label: "Textos", category: "textos", Icon: TextIcon },
+  { label: "Livros", category: "livros", Icon: BookIcon },
 ];
 
 /**
@@ -107,7 +113,7 @@ export function HomeScreen({ navigation }: Props) {
             accessibilityRole="button"
             accessibilityLabel={option.label}
           >
-            <Text style={styles.buttonIcon}>{option.icon}</Text>
+            <option.Icon size={18} color={colors.surface} />
             <Text style={styles.buttonText}>{option.label}</Text>
           </Pressable>
         ))}
@@ -160,6 +166,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: spacing.xs,
     backgroundColor: colors.primary,
     borderRadius: radii.pill,
     borderWidth: 1,
@@ -169,10 +176,6 @@ const styles = StyleSheet.create({
   },
   buttonPressed: {
     opacity: 0.85,
-  },
-  buttonIcon: {
-    fontSize: 16,
-    marginRight: spacing.xs,
   },
   buttonText: {
     fontFamily: fonts.bodyFallback,
