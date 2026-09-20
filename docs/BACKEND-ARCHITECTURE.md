@@ -162,8 +162,14 @@ qualquer outro `streaming_provider` abre o link externo
 embutir player de YouTube Music/SoundCloud/Apple Music exigiria SDK e
 autenticação próprios de cada plataforma, fora do escopo atual.
 
-Índice composto recomendado: `category` + `order` (ascendente) para listagem
-ordenada por subpágina — configurar em `firestore.indexes.json`.
+Índice composto necessário: `category` (==) + `published` (==) + `order`
+(ascendente) — a query real usada por `fetchItemsByCategory`
+(`app/src/firebase/firestore.ts`) filtra por `category` e `published` e
+ordena por `order`, o que exige um índice de três campos, não dois.
+Configurar em Firestore Database → Indexes → Composite (a primeira vez que
+a listagem pública rodar sem esse índice, o Firestore recusa a query com
+"the query requires an index" e devolve um link direto no erro para criar
+o índice faltante no console).
 
 Observação de modelagem: mesmo com Firestore sendo NoSQL, o campo `category`
 funciona como partição lógica; não é necessário usar sub-coleções separadas
@@ -318,11 +324,20 @@ existente) compensou o esforço.
 >   código atual trata PDF (não muda nada no app).
 > - **Áudio próprio (`musicas` com `source: "upload"`):** versionado no
 >   repositório em `app/content-src/` (nome de arquivo sem acento/espaço)
->   e servido estaticamente pelo próprio Cloudflare Pages (adicionar
->   passo no build: copiar `content-src/` para dentro de `dist/` depois
->   do `expo export`) — nunca no Google Drive, que não garante os headers
+>   e servido estaticamente pelo próprio Cloudflare Pages. O comando de
+>   build do Cloudflare Pages (Settings → Builds → Build command) deve ser
+>   `npm run build:web` (script em `app/package.json` que roda
+>   `expo export -p web && cp -r content-src dist/content`) — nunca só
+>   `npx expo export -p web` sozinho, ou o áudio fica 404 em produção.
+>   Nunca hospedar áudio no Google Drive, que não garante os headers
 >   necessários para tocar áudio embutido de forma confiável. `file_url`
 >   vira `https://mensageiros-da-paz.pages.dev/content/{categoria}/{arquivo}`.
+> - **Roteamento SPA (`/admin`, `/mensageiros`, `/configuracoes`):**
+>   `app/public/_redirects` (`/* /index.html 200`) garante que o Cloudflare
+>   Pages sirva `index.html` para qualquer rota em vez de 404 — o Expo
+>   `export -p web` copia automaticamente o conteúdo de `app/public/` para
+>   `dist/`. Sem esse arquivo, recarregar ou compartilhar um link direto
+>   para `/admin` retorna 404 antes do JavaScript do app carregar.
 > - Isso não exige nenhuma mudança no schema (`file_url` já era uma string
 >   genérica) nem no app (`file_url` já era tratado como URL externa).
 

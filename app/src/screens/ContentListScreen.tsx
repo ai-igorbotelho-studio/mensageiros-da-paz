@@ -7,14 +7,15 @@ import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/EmptyState";
 import { ContentListItem } from "@/components/ContentListItem";
-import type { ContentItem, RootStackParamList } from "@/types";
+import type { ContentCategory, ContentItem, RootStackParamList } from "@/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ContentList">;
 
-const EMPTY_MESSAGE: Record<string, string> = {
+const EMPTY_MESSAGE: Record<ContentCategory, string> = {
   oracoes: "Nenhuma oração disponível no momento.",
   musicas: "Nenhuma música disponível no momento.",
   textos: "Nenhum texto disponível no momento.",
+  livros: "Nenhum livro disponível no momento.",
 };
 
 /**

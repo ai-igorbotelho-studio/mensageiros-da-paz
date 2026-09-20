@@ -6,10 +6,11 @@ import type { RootStackParamList } from "@/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Mensageiros">;
 
-const OPTIONS: Array<{ label: string; category: "oracoes" | "musicas" | "textos" }> = [
+const OPTIONS: Array<{ label: string; category: "oracoes" | "musicas" | "textos" | "livros" }> = [
   { label: "ORAÇÕES", category: "oracoes" },
   { label: "MÚSICAS", category: "musicas" },
   { label: "TEXTOS", category: "textos" },
+  { label: "LIVROS", category: "livros" },
 ];
 
 /**

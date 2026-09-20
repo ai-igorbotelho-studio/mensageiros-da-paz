@@ -49,24 +49,20 @@ export function RootNavigator() {
           headerTitleStyle: { fontFamily: fonts.bodyFallback },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
+          // Cabeçalho fixo "Mensageiros da Paz" em todas as páginas, a
+          // pedido do Head (2026-09-21) — substitui os títulos por tela
+          // usados antes (nome da subpágina/item).
+          title: "Mensageiros da Paz",
         }}
       >
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ headerShown: false }}
-        />
+        <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen
           name="Mensageiros"
           component={MensageirosScreen}
           options={({ navigation }) => ({
-            title: "Mensageiros",
             // Ponto de entrada único para Configurações: um ícone discreto
             // no cabeçalho de "Mensageiros" (não na Home, que permanece
             // minimalista conforme docs/UX-ARCHITECTURE.md/CREATIVE-DIRECTION.md).
-            // "Mensageiros" já tem cabeçalho nativo visível, então o ícone
-            // não introduz nenhuma superfície visual nova nem compete com
-            // o conteúdo da Home.
             headerRight: () => (
               <Pressable
                 onPress={() => navigation.navigate("Settings")}
@@ -85,26 +81,10 @@ export function RootNavigator() {
             ),
           })}
         />
-        <Stack.Screen
-          name="ContentList"
-          component={ContentListScreen}
-          options={({ route }) => ({ title: route.params.title })}
-        />
-        <Stack.Screen
-          name="ItemDetail"
-          component={ItemDetailScreen}
-          options={({ route }) => ({ title: route.params.item.title })}
-        />
-        <Stack.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{ title: "Configurações" }}
-        />
-        <Stack.Screen
-          name="Admin"
-          component={AdminScreen}
-          options={{ title: "Admin" }}
-        />
+        <Stack.Screen name="ContentList" component={ContentListScreen} />
+        <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Admin" component={AdminScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
