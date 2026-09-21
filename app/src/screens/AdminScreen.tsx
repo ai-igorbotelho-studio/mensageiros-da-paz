@@ -132,12 +132,17 @@ const EMPTY_FORM: ItemFormValues = {
   published: true,
 };
 
-type Tab = "practice" | "library" | "form";
+// A aba "Novo item" foi absorvida pela Biblioteca (2026-09-21, a
+// pedido do Head): ter um formulário de item separado por aba e a
+// lista de itens em outra criava duas formas de chegar no mesmo lugar
+// e confundia navegação. Agora "Publicação manual" é uma seção
+// recolhível dentro de cada categoria da Biblioteca — só uma tela, só
+// um fluxo por categoria.
+type Tab = "practice" | "library";
 
 const TABS: Array<{ key: Tab; label: string }> = [
   { key: "practice", label: "Prática da Semana" },
   { key: "library", label: "Biblioteca" },
-  { key: "form", label: "Novo item" },
 ];
 
 export function AdminScreen() {
@@ -275,6 +280,7 @@ function AdminDashboard({ user }: { user: User }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  const [manualOpen, setManualOpen] = useState(false);
   const [form, setForm] = useState<ItemFormValues>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -339,6 +345,7 @@ function AdminDashboard({ user }: { user: User }) {
     // esteja sendo editado, para não perder o que está sendo alterado.
     if (editingId === null) {
       setForm({ ...EMPTY_FORM, category });
+      setManualOpen(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, loadItems]);
@@ -372,14 +379,16 @@ function AdminDashboard({ user }: { user: User }) {
       order: item.order,
       published: item.published,
     });
-    setActiveTab("form");
+    setCategory(item.category);
+    setActiveTab("library");
+    setManualOpen(true);
   }
 
   function startNew() {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, category, order: items.length + 1 });
     setFormError(null);
-    setActiveTab("form");
+    setManualOpen(true);
   }
 
   async function submitForm() {
@@ -410,7 +419,7 @@ function AdminDashboard({ user }: { user: User }) {
       setForm({ ...EMPTY_FORM, category: form.category });
       loadItems();
       refreshCounts();
-      setActiveTab("library");
+      setManualOpen(false);
     } catch {
       setFormError("Não foi possível salvar. Tente novamente.");
       notify("Não foi possível salvar o item.", "error");
@@ -621,15 +630,12 @@ function AdminDashboard({ user }: { user: User }) {
           <Pressable
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            onPress={() => {
-              if (tab.key === "form" && editingId === null) startNew();
-              else setActiveTab(tab.key);
-            }}
+            onPress={() => setActiveTab(tab.key)}
             accessibilityRole="button"
             accessibilityState={{ selected: activeTab === tab.key }}
           >
             <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-              {tab.key === "form" && editingId ? "Editar item" : tab.label}
+              {tab.label}
             </Text>
           </Pressable>
         ))}
@@ -729,14 +735,6 @@ function AdminDashboard({ user }: { user: User }) {
                   </Pressable>
                 </View>
               </View>
-
-              <Pressable
-                style={styles.primaryButtonWide}
-                onPress={startNew}
-                accessibilityRole="button"
-              >
-                <Text style={styles.primaryButtonText}>+ Novo item em {CATEGORY_LABEL[category]}</Text>
-              </Pressable>
 
               <View style={styles.divider} />
 
@@ -847,12 +845,41 @@ function AdminDashboard({ user }: { user: User }) {
                   </Pressable>
                 </>
               ) : null}
-            </View>
-          </>
-        ) : null}
 
-        {activeTab === "form" ? (
-          <>
+              <View style={styles.divider} />
+
+              {/*
+                "Novo item" deixou de ser uma aba própria (2026-09-21, a
+                pedido do Head): virou "Publicação manual", uma seção
+                recolhível logo abaixo dos itens de CADA categoria da
+                Biblioteca — evita duas telas/fluxos diferentes pro
+                mesmo lugar (cadastrar/editar um item), reduzindo erro
+                de navegação e duplicidade.
+              */}
+              <Pressable
+                style={styles.manualToggle}
+                onPress={() => {
+                  if (!manualOpen) startNew();
+                  else setManualOpen(false);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: manualOpen }}
+              >
+                <Text style={styles.formGroupTitle}>
+                  {editingId ? "Editando item" : "Publicação manual"}
+                </Text>
+                <Chevron expanded={manualOpen} />
+              </Pressable>
+              {!manualOpen ? (
+                <Text style={styles.fieldHint}>
+                  Cadastrar ou editar um item de {CATEGORY_LABEL[category]} à mão
+                  (sem planilha).
+                </Text>
+              ) : null}
+            </View>
+
+            {manualOpen ? (
+              <>
             <View style={styles.libraryCard}>
               <Text style={styles.formGroupTitle}>Identificação</Text>
               <TextInput
@@ -1046,20 +1073,24 @@ function AdminDashboard({ user }: { user: User }) {
                     {editingId ? "Salvar alterações" : "Adicionar item"}
                   </Text>
                 </Pressable>
-                {editingId ? (
-                  <Pressable
-                    style={styles.secondaryButton}
-                    onPress={() => {
-                      startNew();
-                      setActiveTab("library");
-                    }}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.secondaryButtonText}>Cancelar</Text>
-                  </Pressable>
-                ) : null}
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPress={() => {
+                    setEditingId(null);
+                    setForm({ ...EMPTY_FORM, category });
+                    setFormError(null);
+                    setManualOpen(false);
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.secondaryButtonText}>
+                    {editingId ? "Cancelar" : "Fechar"}
+                  </Text>
+                </Pressable>
               </View>
             </View>
+              </>
+            ) : null}
           </>
         ) : null}
       </ScrollView>
@@ -1301,6 +1332,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     textTransform: "uppercase",
     letterSpacing: 0.4,
+  },
+  manualToggle: {
+    minHeight: minTouchSize - 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   helper: {
     fontFamily: fonts.bodyFallback,
