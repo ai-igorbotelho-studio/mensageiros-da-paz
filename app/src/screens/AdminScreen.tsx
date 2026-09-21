@@ -11,13 +11,7 @@ import {
   View,
 } from "react-native";
 import type { User } from "firebase/auth";
-// Fundo escuro só no Admin, de propósito — diferencia visualmente do
-// app público (2026-09-21, a pedido do Head), sem inventar cor nova:
-// `darkColors` já é a variante escura documentada da mesma paleta
-// (Guia do Admin > Identidade Visual > "modo escuro"), só que ainda não
-// tinha nenhum consumidor real no código. Renomeado pra `colors` neste
-// arquivo pra não precisar tocar cada uso abaixo.
-import { darkColors as colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { AdminGuideEmbed } from "@/components/AdminGuideEmbed";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
 import {
@@ -71,6 +65,17 @@ import type {
  * feedback consistentes via toast, e a importação de planilha virou um
  * modal em vez de um painel que empurra o layout.
  */
+
+// Diferenciação visual do Admin em relação ao app público (2026-09-21,
+// a pedido do Head — a 1ª tentativa foi fundo escuro, reprovada por
+// ficar ruim; esta troca fundo por FAIXA + TOM DE FUNDO, sem escurecer
+// nada). Um cinza-greige neutro no lugar do Pale apricot do app público
+// já sinaliza "isto é outra área" à primeira vista; a faixa colorida
+// "Painel Administrativo" no topo reforça isso sem depender só da cor
+// de fundo. Paleta/marca (Mulberry, Sage, Lora/Lexend) continuam as
+// mesmas — só a composição muda.
+const ADMIN_BG = "#EFE8DD";
+const ADMIN_SURFACE = "#FBF7F1";
 
 const CATEGORIES: ContentCategory[] = ["oracoes", "musicas", "textos", "livros"];
 const CATEGORY_LABEL: Record<ContentCategory, string> = {
@@ -203,6 +208,9 @@ export function AdminScreen() {
   if (!user) {
     return (
       <View style={styles.loginContainer}>
+        <View style={styles.adminBanner}>
+          <Text style={styles.adminBannerText}>Painel administrativo</Text>
+        </View>
         <Text style={styles.title}>Admin</Text>
         <Text style={styles.helper}>
           Entre com a conta criada no Firebase Authentication.
@@ -712,6 +720,9 @@ function AdminDashboard({ user }: { user: User }) {
 
   return (
     <View style={styles.screen}>
+      <View style={styles.adminBanner}>
+        <Text style={styles.adminBannerText}>Painel administrativo</Text>
+      </View>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Admin</Text>
         <Pressable onPress={() => adminSignOut()} accessibilityRole="button">
@@ -1540,7 +1551,7 @@ function formValuesFromItem(item: ContentItem): ItemFormValues {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: ADMIN_BG,
     paddingTop: spacing.lg,
     paddingHorizontal: spacing.lg,
   },
@@ -1549,7 +1560,7 @@ const styles = StyleSheet.create({
   },
   loginContainer: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: ADMIN_BG,
     padding: spacing.lg,
   },
   scrollContent: {
@@ -1559,7 +1570,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.background,
+    backgroundColor: ADMIN_BG,
+  },
+  adminBanner: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.primary,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  adminBannerText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: colors.surface,
   },
   headerRow: {
     flexDirection: "row",
@@ -1932,7 +1959,7 @@ const styles = StyleSheet.create({
   skeletonRow: {
     height: 52,
     borderRadius: radii.md,
-    backgroundColor: colors.background,
+    backgroundColor: ADMIN_BG,
     opacity: 0.6,
     marginBottom: spacing.xs,
   },
@@ -2117,7 +2144,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 560,
     maxHeight: "85%",
-    backgroundColor: colors.background,
+    backgroundColor: ADMIN_BG,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.primaryLight,
