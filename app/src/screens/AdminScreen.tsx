@@ -87,6 +87,7 @@ const IMPORT_FIELD_OPTIONS: ImportField[] = [
   "title",
   "description",
   "text",
+  "coverImageUrl",
   "fileUrl",
   "fileType",
   "order",
@@ -126,6 +127,7 @@ const EMPTY_FORM: ItemFormValues = {
   text: "",
   fileUrl: "",
   fileType: "pdf",
+  coverImageUrl: "",
   streamingProvider: "spotify",
   streamingUrl: "",
   order: 1,
@@ -374,6 +376,7 @@ function AdminDashboard({ user }: { user: User }) {
       text: item.text ?? "",
       fileUrl: item.fileUrl ?? "",
       fileType: item.fileType ?? "pdf",
+      coverImageUrl: item.coverImageUrl ?? "",
       streamingProvider: item.streamingProvider ?? "spotify",
       streamingUrl: item.streamingUrl ?? "",
       order: item.order,
@@ -568,6 +571,7 @@ function AdminDashboard({ user }: { user: User }) {
           continue;
         }
         const fileUrl = valueForField(row, "fileUrl");
+        const coverImageUrl = valueForField(row, "coverImageUrl");
         const text = valueForField(row, "text");
         const rawFileType = valueForField(row, "fileType").toLowerCase();
         const fileType: FileType = (["pdf", "image", "audio", "gdoc"] as FileType[]).includes(
@@ -586,6 +590,7 @@ function AdminDashboard({ user }: { user: User }) {
           text,
           fileUrl,
           fileType,
+          coverImageUrl,
           streamingProvider: "spotify",
           streamingUrl: "",
           order: Number.isFinite(parsedOrder) && rawOrder ? parsedOrder : order,
@@ -1003,6 +1008,25 @@ function AdminDashboard({ user }: { user: User }) {
                       precisa estar compartilhado como "Qualquer pessoa com o link".
                     </Text>
                   ) : null}
+
+                  {form.category === "livros" ? (
+                    <>
+                      <Text style={styles.fieldHint}>
+                        Capa do livro (opcional) — link direto de uma imagem
+                        (Google Drive, Cloudflare, etc.). Aparece do lado do
+                        título na lista de Livros; sem capa, o app mostra um
+                        ícone de livro no lugar.
+                      </Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="https://drive.google.com/... (imagem da capa)"
+                        placeholderTextColor={colors.textSecondary}
+                        value={form.coverImageUrl}
+                        onChangeText={(coverImageUrl) => setForm((f) => ({ ...f, coverImageUrl }))}
+                        autoCapitalize="none"
+                      />
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -1247,6 +1271,7 @@ function formValuesFromItem(item: ContentItem): ItemFormValues {
     text: item.text ?? "",
     fileUrl: item.fileUrl ?? "",
     fileType: item.fileType ?? "pdf",
+    coverImageUrl: item.coverImageUrl ?? "",
     streamingProvider: item.streamingProvider ?? "spotify",
     streamingUrl: item.streamingUrl ?? "",
     order: item.order,

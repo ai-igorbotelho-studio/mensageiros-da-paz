@@ -32,6 +32,9 @@ export interface ContentItem {
   fileUrl: string | null;
   fileType: FileType | null;
   mimeType: string | null;
+  // capa/imagem de destaque (hoje só usado por Livros) — independente
+  // de `fileType`, que descreve o arquivo principal (o PDF do livro)
+  coverImageUrl: string | null;
   // presentes somente quando source === "streaming"
   streamingProvider: StreamingProvider | null;
   streamingUrl: string | null;

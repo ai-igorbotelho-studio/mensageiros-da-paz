@@ -1,6 +1,8 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+import { BookIcon } from "@/components/CategoryIcons";
+import { toDirectFileUrl } from "@/utils/driveUrl";
 import type { ContentItem, StreamingProvider } from "@/types";
 
 const FILE_TYPE_LABEL: Record<NonNullable<ContentItem["fileType"]>, string> = {
@@ -33,6 +35,10 @@ interface Props {
 
 export function ContentListItem({ item, onPress }: Props) {
   const badge = badgeLabel(item);
+  // Espaço de capa só existe pra Livros (2026-09-21, a pedido do Head):
+  // as outras categorias não têm imagem própria por item, então o
+  // layout de duas colunas ficaria vazio à toa nelas.
+  const showCover = item.category === "livros";
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -40,6 +46,20 @@ export function ContentListItem({ item, onPress }: Props) {
       accessibilityRole="button"
       accessibilityLabel={`${item.title}, ${badge}`}
     >
+      {showCover ? (
+        item.coverImageUrl ? (
+          <Image
+            source={{ uri: toDirectFileUrl(item.coverImageUrl) }}
+            style={styles.cover}
+            resizeMode="cover"
+            accessibilityLabel={`Capa de ${item.title}`}
+          />
+        ) : (
+          <View style={styles.coverPlaceholder}>
+            <BookIcon size={22} color={colors.primaryLight} />
+          </View>
+        )
+      ) : null}
       <View style={styles.textColumn}>
         <Text style={styles.title}>{item.title}</Text>
         {item.description ? (
@@ -52,6 +72,8 @@ export function ContentListItem({ item, onPress }: Props) {
     </Pressable>
   );
 }
+
+const COVER_SIZE = 48;
 
 const styles = StyleSheet.create({
   card: {
@@ -66,6 +88,23 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.7,
+  },
+  cover: {
+    width: COVER_SIZE,
+    height: COVER_SIZE * 1.4,
+    borderRadius: radii.sm,
+    marginRight: spacing.md,
+  },
+  coverPlaceholder: {
+    width: COVER_SIZE,
+    height: COVER_SIZE * 1.4,
+    borderRadius: radii.sm,
+    marginRight: spacing.md,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
   },
   textColumn: {
     flex: 1,

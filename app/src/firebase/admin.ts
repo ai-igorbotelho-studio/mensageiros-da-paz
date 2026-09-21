@@ -96,6 +96,7 @@ export async function adminListItemsByCategory(
         fileUrl: data.file_url ?? null,
         fileType: data.file_type ?? null,
         mimeType: data.mime_type ?? null,
+        coverImageUrl: data.cover_image_url ?? null,
         streamingProvider: data.streaming_provider ?? null,
         streamingUrl: data.streaming_url ?? null,
         order: data.order ?? 0,
@@ -116,6 +117,9 @@ export interface ItemFormValues {
   text: string;
   fileUrl: string;
   fileType: FileType;
+  // capa/imagem de destaque (hoje só usado por Livros) — independente
+  // de `fileUrl`, que aqui é o PDF do livro em si
+  coverImageUrl: string;
   streamingProvider: StreamingProvider;
   streamingUrl: string;
   order: number;
@@ -143,6 +147,7 @@ export async function adminCreateItem(values: ItemFormValues, adminEmail: string
     file_type: isUpload ? values.fileType : null,
     mime_type: isUpload ? mimeTypeFor(values.fileType) : null,
     file_size_bytes: null,
+    cover_image_url: values.coverImageUrl || null,
     streaming_provider: isUpload ? null : values.streamingProvider,
     streaming_url: isUpload ? null : values.streamingUrl,
     order: values.order,
@@ -168,6 +173,7 @@ export async function adminUpdateItem(
     file_url: isUpload ? values.fileUrl : null,
     file_type: isUpload ? values.fileType : null,
     mime_type: isUpload ? mimeTypeFor(values.fileType) : null,
+    cover_image_url: values.coverImageUrl || null,
     streaming_provider: isUpload ? null : values.streamingProvider,
     streaming_url: isUpload ? null : values.streamingUrl,
     order: values.order,

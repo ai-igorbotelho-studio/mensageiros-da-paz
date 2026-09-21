@@ -63,6 +63,7 @@ export type ImportField =
   | "title"
   | "description"
   | "text"
+  | "coverImageUrl"
   | "fileUrl"
   | "fileType"
   | "order";
@@ -72,6 +73,7 @@ export const IMPORT_FIELD_LABEL: Record<ImportField, string> = {
   title: "Título",
   description: "Descrição / Autor",
   text: "Texto completo",
+  coverImageUrl: "Capa (imagem)",
   fileUrl: "Link do arquivo",
   fileType: "Tipo de arquivo (pdf/image/audio/gdoc)",
   order: "Ordem",
@@ -81,11 +83,16 @@ export const IMPORT_FIELD_LABEL: Record<ImportField, string> = {
 // palavras extras em volta (ex.: "Nome da oração", "Link para Gdoc"), e
 // um match exato deixava tudo caindo em "Ignorar" — bug relatado
 // 2026-09-21 (planilha de Orações importava tudo "sem título").
+//
+// `coverImageUrl` é checado ANTES de `fileUrl`: um cabeçalho como
+// "Link para capa" bate em ambos os padrões, mas é a capa, não o
+// arquivo principal — a ordem do array decide qual ganha.
 const HEADER_GUESSES: Array<{ field: ImportField; patterns: RegExp[] }> = [
   { field: "title", patterns: [/t[ií]tulo/i, /nome/i, /name/i] },
   { field: "description", patterns: [/autor/i, /descri[cç][aã]o/i, /author/i] },
   { field: "text", patterns: [/texto/i, /conte[uú]do/i, /letra/i] },
-  { field: "fileUrl", patterns: [/link/i, /url/i, /arquivo/i, /imagem/i, /drive/i, /gdoc/i] },
+  { field: "coverImageUrl", patterns: [/capa/i, /cover/i] },
+  { field: "fileUrl", patterns: [/link/i, /url/i, /arquivo/i, /imagem/i, /drive/i, /gdoc/i, /livro/i] },
   { field: "fileType", patterns: [/tipo/i, /formato/i] },
   { field: "order", patterns: [/ordem/i, /order/i] },
 ];

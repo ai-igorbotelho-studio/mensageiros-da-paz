@@ -68,6 +68,7 @@ export async function fetchItemsByCategory(
         fileUrl: data.file_url ?? null,
         fileType: data.file_type ?? null,
         mimeType: data.mime_type ?? null,
+        coverImageUrl: data.cover_image_url ?? null,
         streamingProvider: data.streaming_provider ?? null,
         streamingUrl: data.streaming_url ?? null,
         order: data.order ?? 0,
