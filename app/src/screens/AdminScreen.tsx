@@ -490,7 +490,14 @@ function AdminDashboard({ user }: { user: User }) {
       const [header, ...rows] = table;
       setImportHeaders(header);
       setImportRows(rows);
-      setImportMapping(header.map(guessFieldForHeader));
+      const mapping = header.map(guessFieldForHeader);
+      // Garante que sempre exista uma coluna mapeada como Título — se
+      // nenhum cabeçalho bateu com a adivinhação, assume que é a
+      // primeira coluna (padrão mais comum em planilhas de índice).
+      if (!mapping.includes("title") && mapping.length > 0) {
+        mapping[0] = "title";
+      }
+      setImportMapping(mapping);
       setImportSelected(new Set(rows.map((_, i) => i)));
     } catch {
       setImportError(
@@ -1113,10 +1120,28 @@ function AdminDashboard({ user }: { user: User }) {
                     ))}
                   </View>
 
-                  <Text style={styles.fieldHint}>
-                    Selecione as linhas que quer importar ({importSelected.size} de{" "}
-                    {importRows.length}):
-                  </Text>
+                  <View style={styles.headerRow}>
+                    <Text style={styles.fieldHint}>
+                      Selecione as linhas que quer importar ({importSelected.size} de{" "}
+                      {importRows.length}):
+                    </Text>
+                    <Pressable
+                      onPress={() =>
+                        setImportSelected((current) =>
+                          current.size === importRows.length
+                            ? new Set()
+                            : new Set(importRows.map((_, i) => i))
+                        )
+                      }
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.link}>
+                        {importSelected.size === importRows.length
+                          ? "Desmarcar todos"
+                          : "Selecionar todos"}
+                      </Text>
+                    </Pressable>
+                  </View>
                   {importRows.map((row, rowIndex) => {
                     const title = valueForField(row, "title") || "(sem título)";
                     const description = valueForField(row, "description");
@@ -1128,11 +1153,20 @@ function AdminDashboard({ user }: { user: User }) {
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: importSelected.has(rowIndex) }}
                       >
+                        {/*
+                          A Switch aqui é só decorativa (pointerEvents
+                          "none"): antes ela tinha seu próprio
+                          onValueChange além do onPress da linha, e no
+                          web os dois disparavam no mesmo toque — um
+                          ligava, o outro desligava de volta, então o
+                          toque parecia não fazer nada. Um único
+                          handler (o da linha) resolve.
+                        */}
                         <Switch
                           value={importSelected.has(rowIndex)}
-                          onValueChange={() => toggleRowSelected(rowIndex)}
                           trackColor={{ false: colors.textSecondary, true: colors.primaryLight }}
                           thumbColor={importSelected.has(rowIndex) ? colors.primary : colors.surface}
+                          pointerEvents="none"
                         />
                         <View style={styles.itemTextColumn}>
                           <Text style={styles.itemTitle}>{title}</Text>
