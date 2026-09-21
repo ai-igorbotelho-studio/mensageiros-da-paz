@@ -3,7 +3,7 @@ import { Image, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { BookIcon } from "@/components/CategoryIcons";
 import { PressableScale } from "@/components/PressableScale";
-import { toDirectFileUrl } from "@/utils/driveUrl";
+import { toGoogleDriveImageUrl } from "@/utils/driveUrl";
 import type { ContentItem, StreamingProvider } from "@/types";
 
 const FILE_TYPE_LABEL: Record<NonNullable<ContentItem["fileType"]>, string> = {
@@ -64,7 +64,7 @@ export function ContentListItem({ item, onPress }: Props) {
       {showCover ? (
         item.coverImageUrl ? (
           <Image
-            source={{ uri: toDirectFileUrl(item.coverImageUrl) }}
+            source={{ uri: toGoogleDriveImageUrl(item.coverImageUrl) }}
             style={styles.cover}
             resizeMode="cover"
             accessibilityLabel={`Capa de ${item.title}`}

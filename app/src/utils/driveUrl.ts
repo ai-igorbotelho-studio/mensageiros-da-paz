@@ -53,6 +53,24 @@ export function toGoogleDrivePreviewUrl(url: string): string | null {
 }
 
 /**
+ * URL de conteúdo de IMAGEM do Drive via `lh3.googleusercontent.com`
+ * (o mesmo domínio de CDN que o próprio Drive/Fotos usa pra servir
+ * miniaturas e imagens embutidas). `toDirectFileUrl` (`uc?export=...`)
+ * também tem o problema do `Content-Disposition: attachment` — força
+ * download em vez de exibir inline, então um `<Image>` com essa URL
+ * simplesmente não renderiza nada (relatado 2026-09-21: capas de
+ * livro reimportadas continuavam não aparecendo, mesmo com o link
+ * certo na planilha). Esse domínio serve a imagem direto, sem forçar
+ * download — mesmo princípio da correção já aplicada em áudio.
+ */
+export function toGoogleDriveImageUrl(url: string): string {
+  if (!url.includes("drive.google.com")) return url;
+  const fileId = extractDriveFileId(url);
+  if (!fileId) return url;
+  return `https://lh3.googleusercontent.com/d/${fileId}`;
+}
+
+/**
  * Converte um link de um Google Doc (.../document/d/{id}/edit?usp=sharing)
  * para a URL de exportação em texto puro (.../export?format=txt) — usada
  * pra ler o conteúdo do documento ao vivo dentro do app (categoria

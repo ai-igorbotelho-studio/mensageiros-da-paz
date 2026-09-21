@@ -1,18 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, spacing } from "@/theme/tokens";
 import { fetchPracticeOfTheWeek } from "@/firebase/firestore";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { BottomNavBar } from "@/components/BottomNavBar";
 import { FadeIn } from "@/components/FadeIn";
-import type { RootStackParamList } from "@/types";
 
 const CACHE_KEY = "practice_of_the_week_cache";
-
-type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
 /**
  * Home: só a Prática da Semana. Os 4 botões grandes de categoria

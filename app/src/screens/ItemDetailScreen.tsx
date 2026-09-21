@@ -19,6 +19,7 @@ import { DriveAudioEmbed } from "@/components/DriveAudioEmbed";
 import {
   toDirectFileUrl,
   toGoogleDocsTextExportUrl,
+  toGoogleDriveImageUrl,
   toGoogleDrivePreviewUrl,
 } from "@/utils/driveUrl";
 import type { ContentCategory, RootStackParamList, StreamingProvider } from "@/types";
@@ -234,7 +235,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
 
       {item.source === "upload" && item.fileType === "image" && item.fileUrl ? (
         <Image
-          source={{ uri: toDirectFileUrl(item.fileUrl) }}
+          source={{ uri: toGoogleDriveImageUrl(item.fileUrl) }}
           style={styles.image}
           resizeMode="contain"
           accessibilityLabel={item.title}
