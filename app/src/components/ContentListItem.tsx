@@ -112,12 +112,17 @@ export function ContentListItem({ item, onPress }: Props) {
             {item.description}
           </Text>
         ) : null}
-        {action ? (
-          <View style={styles.actionChip}>
-            <Text style={styles.actionChipText}>{action}</Text>
-            <Text style={styles.actionChipArrow}>→</Text>
-          </View>
-        ) : null}
+      </View>
+      {/*
+        Antes era um botão de texto ("Ler agora →") repetido em toda
+        linha da lista — virou visualmente cansativo de tanto se
+        repetir (2026-09-21, a pedido do Head). Um círculo com seta
+        fina comunica "abrir" sem precisar de palavra nenhuma, e some
+        menos na hierarquia visual do que um botão de texto repetido
+        várias vezes.
+      */}
+      <View style={styles.arrowCircle}>
+        <Text style={styles.arrowGlyph}>↗</Text>
       </View>
     </PressableScale>
   );
@@ -129,7 +134,7 @@ const styles = StyleSheet.create({
   card: {
     minHeight: minTouchSize,
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     backgroundColor: colors.surface,
     borderRadius: radii.md,
     padding: spacing.md,
@@ -154,6 +159,7 @@ const styles = StyleSheet.create({
   },
   textColumn: {
     flex: 1,
+    marginRight: spacing.sm,
   },
   title: {
     fontFamily: fonts.displayFallback,
@@ -167,33 +173,23 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
-  // Chip de ação compacto (largura do próprio conteúdo, não da linha
-  // toda) — corrige o botão que antes esticava de ponta a ponta do
-  // card por causa de um bug de layout no wrapper de animação
-  // (2026-09-21, relatado "UX ficou muito ruim").
-  actionChip: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    backgroundColor: colors.background,
-    borderWidth: 1,
+  arrowCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1.5,
     borderColor: colors.primary,
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
-  actionChipText: {
-    fontFamily: fonts.bodyFallback,
-    fontWeight: "700",
-    fontSize: 12.5,
+  arrowGlyph: {
+    fontSize: 15,
+    fontWeight: "300",
     color: colors.primary,
-  },
-  actionChipArrow: {
-    fontFamily: fonts.bodyFallback,
-    fontWeight: "700",
-    fontSize: 12.5,
-    color: colors.primary,
+    // leve ajuste ótico: o glifo ↗ não fica visualmente centralizado
+    // no círculo sem isso.
+    marginBottom: 1,
+    marginLeft: 1,
   },
 });

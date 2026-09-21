@@ -51,9 +51,11 @@ export function RootNavigator() {
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
           // Cross-fade em vez do slide padrão — some com o "salto" seco
-          // entre páginas (2026-09-21, a pedido do Head).
+          // entre páginas (2026-09-21, a pedido do Head). Duração um
+          // pouco mais longa que o padrão pra parecer fluida em vez de
+          // instantânea, sem ficar lenta.
           animation: "fade",
-          animationDuration: 180,
+          animationDuration: 260,
           // Cabeçalho fixo "Mensageiros da Paz" em todas as páginas, a
           // pedido do Head (2026-09-21) — substitui os títulos por tela
           // usados antes (nome da subpágina/item). Também funciona como

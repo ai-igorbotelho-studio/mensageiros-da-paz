@@ -3,7 +3,6 @@ import {
   Image,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +15,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { SpotifyEmbed } from "@/components/SpotifyEmbed";
 import { BottomNavBar } from "@/components/BottomNavBar";
 import { DriveAudioEmbed } from "@/components/DriveAudioEmbed";
+import { PressableScale } from "@/components/PressableScale";
 import {
   toDirectFileUrl,
   toGoogleDocsTextExportUrl,
@@ -162,7 +162,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
   return (
     <View style={styles.outer}>
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <Pressable
+      <PressableScale
         style={styles.backButton}
         onPress={() =>
           navigation.navigate("ContentList", {
@@ -176,7 +176,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
         <Text style={styles.backButtonText}>
           ← Voltar para {CATEGORY_LABEL[item.category]}
         </Text>
-      </Pressable>
+      </PressableScale>
 
       <Text style={styles.title}>{item.title}</Text>
       {item.description ? (
@@ -223,14 +223,14 @@ export function ItemDetailScreen({ route, navigation }: Props) {
           return trackId ? (
             <SpotifyEmbed trackId={trackId} />
           ) : (
-            <Pressable
+            <PressableScale
               style={styles.playButton}
               onPress={() => Linking.openURL(item.streamingUrl!)}
               accessibilityRole="button"
               accessibilityLabel={`Abrir ${label}`}
             >
               <Text style={styles.playButtonText}>Abrir {label}</Text>
-            </Pressable>
+            </PressableScale>
           );
         })()
       ) : null}
@@ -266,7 +266,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
           ) : (
             <>
               <View style={styles.transportRow}>
-                <Pressable
+                <PressableScale
                   style={styles.playButton}
                   onPress={togglePlayback}
                   accessibilityRole="button"
@@ -275,8 +275,8 @@ export function ItemDetailScreen({ route, navigation }: Props) {
                   <Text style={styles.playButtonText}>
                     {isPlaying ? "Pausar" : "Reproduzir"}
                   </Text>
-                </Pressable>
-                <Pressable
+                </PressableScale>
+                <PressableScale
                   style={[styles.stopButton, !canStop && styles.stopButtonDisabled]}
                   onPress={stopPlayback}
                   disabled={!canStop}
@@ -284,29 +284,29 @@ export function ItemDetailScreen({ route, navigation }: Props) {
                   accessibilityLabel="Parar"
                 >
                   <Text style={styles.stopButtonText}>Parar</Text>
-                </Pressable>
+                </PressableScale>
               </View>
 
               <View style={styles.volumeRow}>
-                <Pressable
+                <PressableScale
                   style={styles.volumeButton}
                   onPress={() => changeVolume(-VOLUME_STEP)}
                   accessibilityRole="button"
                   accessibilityLabel="Diminuir volume"
                 >
                   <Text style={styles.volumeButtonText}>−</Text>
-                </Pressable>
+                </PressableScale>
                 <View style={styles.volumeTrack}>
                   <View style={[styles.volumeFill, { width: `${volume * 100}%` }]} />
                 </View>
-                <Pressable
+                <PressableScale
                   style={styles.volumeButton}
                   onPress={() => changeVolume(VOLUME_STEP)}
                   accessibilityRole="button"
                   accessibilityLabel="Aumentar volume"
                 >
                   <Text style={styles.volumeButtonText}>+</Text>
-                </Pressable>
+                </PressableScale>
                 <Text style={styles.volumeLabel}>{Math.round(volume * 100)}%</Text>
               </View>
             </>
@@ -319,14 +319,14 @@ export function ItemDetailScreen({ route, navigation }: Props) {
           <Text style={styles.description}>
             Este documento é um PDF. Toque abaixo para abri-lo.
           </Text>
-          <Pressable
+          <PressableScale
             style={styles.playButton}
             onPress={() => Linking.openURL(item.fileUrl!)}
             accessibilityRole="button"
             accessibilityLabel="Abrir PDF"
           >
             <Text style={styles.playButtonText}>Abrir PDF</Text>
-          </Pressable>
+          </PressableScale>
           {/*
             Alternativa recomendada para leitura embutida (sem sair do app):
             react-native-pdf (já em package.json), exigindo EAS Build.
