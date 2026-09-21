@@ -12,9 +12,9 @@ const TABS: Array<{
   Icon: typeof PrayerIcon;
 }> = [
   { label: "Orações", category: "oracoes", Icon: PrayerIcon },
+  { label: "Livros", category: "livros", Icon: BookIcon },
   { label: "Músicas", category: "musicas", Icon: MusicIcon },
   { label: "Textos", category: "textos", Icon: TextIcon },
-  { label: "Livros", category: "livros", Icon: BookIcon },
 ];
 
 interface Props {
@@ -58,7 +58,9 @@ export function BottomNavBar({ active }: Props) {
               accessibilityLabel={tab.label}
               accessibilityState={{ selected: isActive }}
             >
-              <tab.Icon size={20} color={isActive ? colors.surface : colors.inverseMuted} />
+              <View style={[styles.iconCircle, isActive && styles.iconCircleActive]}>
+                <tab.Icon size={20} color={isActive ? colors.primary : colors.inverseMuted} />
+              </View>
               <Text style={[styles.label, isActive && styles.labelActive]}>
                 {tab.label}
               </Text>
@@ -103,6 +105,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
+  },
+  iconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Círculo preenchido com a cor de destaque (Sage) atrás do ícone da
+  // categoria atual — reforça qual página está ativa além da cor do
+  // texto/ícone (2026-09-21, a pedido do Head).
+  iconCircleActive: {
+    backgroundColor: colors.accent,
   },
   label: {
     fontFamily: fonts.bodyFallback,
