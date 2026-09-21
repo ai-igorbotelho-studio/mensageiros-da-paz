@@ -1,6 +1,7 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, fonts, minTouchSize, spacing } from "@/theme/tokens";
+import { StyleSheet, Text, View } from "react-native";
+import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+import { PressableScale } from "@/components/PressableScale";
 
 interface Props {
   message?: string;
@@ -20,14 +21,14 @@ export function ErrorState({
     <View style={styles.container}>
       <Text style={styles.message}>{message}</Text>
       {onRetry ? (
-        <Pressable
+        <PressableScale
           style={styles.button}
           onPress={onRetry}
           accessibilityRole="button"
           accessibilityLabel="Tentar novamente"
         >
           <Text style={styles.buttonText}>Tentar novamente</Text>
-        </Pressable>
+        </PressableScale>
       ) : null}
     </View>
   );
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     minWidth: minTouchSize,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",

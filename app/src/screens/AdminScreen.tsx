@@ -14,6 +14,7 @@ import type { User } from "firebase/auth";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { AdminGuideEmbed } from "@/components/AdminGuideEmbed";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
+import { PressableScale } from "@/components/PressableScale";
 import {
   adminCreateItem,
   adminDeleteItem,
@@ -283,7 +284,14 @@ function Toast({ toast }: { toast: ToastState }) {
       ]}
       pointerEvents="none"
     >
-      <Text style={styles.toastText}>{toast.message}</Text>
+      <Text
+        style={[
+          styles.toastText,
+          toast.kind === "error" ? styles.toastTextError : styles.toastTextSuccess,
+        ]}
+      >
+        {toast.message}
+      </Text>
     </Animated.View>
   );
 }
@@ -313,8 +321,6 @@ function AdminDashboard({ user }: { user: User }) {
     textos: 0,
     livros: 0,
   });
-  const [items, setItems] = useState<ContentItem[]>([]);
-  const [itemsLoading, setItemsLoading] = useState(true);
   // "Biblioteca completa": visão com os itens das 4 categorias juntos,
   // reaproveitando a mesma busca que já alimenta `categoryCounts` (não
   // dispara uma segunda leitura ao Firestore).
@@ -376,7 +382,7 @@ function AdminDashboard({ user }: { user: User }) {
         setCategoryCounts(nextCounts);
         setLibraryOverview(nextOverview);
       })
-      .catch(() => {})
+      .catch(() => notify("Não foi possível atualizar a lista. Puxe para atualizar ou tente novamente.", "error"))
       .finally(() => setOverviewLoading(false));
   }
 
@@ -385,13 +391,15 @@ function AdminDashboard({ user }: { user: User }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadItems = React.useCallback(() => {
-    setItemsLoading(true);
-    adminListItemsByCategory(category)
-      .then(setItems)
-      .catch(() => setItems([]))
-      .finally(() => setItemsLoading(false));
-  }, [category]);
+  // `items` da categoria atual vem direto de `libraryOverview` — antes
+  // trocar de categoria disparava uma leitura própria ao Firestore
+  // (`adminListItemsByCategory`) além da que `refreshCounts()` já faz
+  // pras 4 categorias, dobrando as leituras à toa (achado de auditoria
+  // de performance, 2026-09-21). `refreshCounts()` já roda depois de
+  // toda criação/edição/exclusão/importação, então `libraryOverview`
+  // nunca fica desatualizado por muito tempo.
+  const items = libraryOverview[category] ?? [];
+  const itemsLoading = overviewLoading;
 
   useEffect(() => {
     setConfirmDeleteAll(false);
@@ -399,7 +407,6 @@ function AdminDashboard({ user }: { user: User }) {
     setConfirmDeleteId(null);
     setSelectMode(false);
     setSelectedIds(new Set());
-    loadItems();
     // A categoria escolhida na Biblioteca e a categoria do formulário
     // "Novo item" eram estados independentes: trocar a categoria não
     // sincronizava o formulário, então um item podia ser salvo na
@@ -412,7 +419,7 @@ function AdminDashboard({ user }: { user: User }) {
       setManualOpen(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, loadItems]);
+  }, [category]);
 
   async function savePractice() {
     try {
@@ -496,7 +503,6 @@ function AdminDashboard({ user }: { user: User }) {
       setEditingId(null);
       setEditingOriginalTitle(null);
       setForm({ ...EMPTY_FORM, category: form.category });
-      loadItems();
       refreshCounts();
       setManualOpen(false);
     } catch {
@@ -515,7 +521,6 @@ function AdminDashboard({ user }: { user: User }) {
       await adminDeleteItem(id);
       notify("Item excluído.");
       if (item) syncItemDeleteToSheet(item.category, item.title, user.email ?? "admin");
-      loadItems();
       refreshCounts();
     } catch {
       notify("Não foi possível excluir o item.", "error");
@@ -535,7 +540,7 @@ function AdminDashboard({ user }: { user: User }) {
         adminUpdateItem(swapWith.id, { ...formValuesFromItem(swapWith), order: item.order }),
       ]);
       notify("Ordem atualizada.");
-      loadItems();
+      refreshCounts();
     } catch {
       notify("Não foi possível reordenar. Tente novamente.", "error");
     }
@@ -572,7 +577,6 @@ function AdminDashboard({ user }: { user: User }) {
       notify(`${selectedIds.size} item(ns) apagado(s) de ${CATEGORY_LABEL[category]}.`);
       setSelectedIds(new Set());
       setSelectMode(false);
-      loadItems();
       refreshCounts();
     } catch {
       notify("Não foi possível apagar os itens selecionados.", "error");
@@ -731,7 +735,6 @@ function AdminDashboard({ user }: { user: User }) {
         }.`
       );
       notify(`${created} criado(s) e ${updated} atualizado(s) em ${CATEGORY_LABEL[category]}.`);
-      loadItems();
       refreshCounts();
     } finally {
       setImportRunning(false);
@@ -747,9 +750,9 @@ function AdminDashboard({ user }: { user: User }) {
       </View>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Admin</Text>
-        <Pressable onPress={() => adminSignOut()} accessibilityRole="button">
+        <PressableScale onPress={() => adminSignOut()} accessibilityRole="button" accessibilityLabel="Sair">
           <Text style={styles.link}>Sair</Text>
-        </Pressable>
+        </PressableScale>
       </View>
       <Text style={styles.helper}>Logado como {user.email}</Text>
 
@@ -1002,7 +1005,14 @@ function AdminDashboard({ user }: { user: User }) {
                                 item.published ? styles.statusBadgePublished : styles.statusBadgeDraft,
                               ]}
                             >
-                              <Text style={styles.statusBadgeText}>
+                              <Text
+                                style={[
+                                  styles.statusBadgeText,
+                                  item.published
+                                    ? styles.statusBadgeTextPublished
+                                    : styles.statusBadgeTextDraft,
+                                ]}
+                              >
                                 {item.published ? "Publicado" : "Rascunho"}
                               </Text>
                             </View>
@@ -1024,36 +1034,53 @@ function AdminDashboard({ user }: { user: User }) {
                           </Text>
 
                           <View style={styles.accordionActionsRow}>
-                            <Pressable
+                            <PressableScale
                               style={[styles.reorderButton, index === 0 && styles.buttonDisabled]}
+                              // Botão visual de 32px (abaixo do minTouchSize
+                              // de 44 — achado de auditoria 2026-09-21);
+                              // hitSlop compensa sem mudar o tamanho visual.
+                              hitSlop={8}
                               onPress={() => moveItem(item, -1)}
                               disabled={index === 0}
                               accessibilityRole="button"
                               accessibilityLabel="Mover para cima"
                             >
                               <Text style={styles.reorderButtonText}>↑</Text>
-                            </Pressable>
-                            <Pressable
+                            </PressableScale>
+                            <PressableScale
                               style={[
                                 styles.reorderButton,
                                 index === sortedItems.length - 1 && styles.buttonDisabled,
                               ]}
+                              hitSlop={8}
                               onPress={() => moveItem(item, 1)}
                               disabled={index === sortedItems.length - 1}
                               accessibilityRole="button"
                               accessibilityLabel="Mover para baixo"
                             >
                               <Text style={styles.reorderButtonText}>↓</Text>
-                            </Pressable>
+                            </PressableScale>
                             <View style={styles.accordionActionsSpacer} />
-                            <Pressable onPress={() => startEdit(item)} accessibilityRole="button">
+                            <PressableScale
+                              onPress={() => startEdit(item)}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Editar ${item.title}`}
+                            >
                               <Text style={styles.link}>Editar</Text>
-                            </Pressable>
-                            <Pressable onPress={() => removeItem(item.id)} accessibilityRole="button">
+                            </PressableScale>
+                            <PressableScale
+                              onPress={() => removeItem(item.id)}
+                              accessibilityRole="button"
+                              accessibilityLabel={
+                                confirmDeleteId === item.id
+                                  ? `Confirmar exclusão de ${item.title}`
+                                  : `Excluir ${item.title}`
+                              }
+                            >
                               <Text style={styles.linkDanger}>
                                 {confirmDeleteId === item.id ? "Confirmar exclusão" : "Excluir"}
                               </Text>
-                            </Pressable>
+                            </PressableScale>
                           </View>
                         </View>
                       ) : null}
@@ -1732,7 +1759,9 @@ const styles = StyleSheet.create({
   showPasswordText: {
     fontFamily: fonts.bodyFallback,
     fontSize: 14,
-    color: colors.accent,
+    // Antes colors.accent (Sage) — contraste 1.84:1 sobre surface,
+    // reprova WCAG AA (achado de auditoria, 2026-09-21).
+    color: colors.primary,
     fontWeight: "600",
   },
   primaryButton: {
@@ -1922,7 +1951,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyFallback,
     fontSize: 13,
     fontWeight: "600",
-    color: colors.accent,
+    // Antes colors.accent (Sage) — contraste 1.84:1 sobre surface,
+    // reprova WCAG AA (achado de auditoria, 2026-09-21). Borda continua
+    // accent (decorativa, não é texto — não precisa de contraste AA).
+    color: colors.primary,
   },
   importRow: {
     flexDirection: "row",
@@ -2096,6 +2128,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyFallback,
     fontSize: 11,
     fontWeight: "700",
+  },
+  // Cor de texto por variante — Sage (fundo claro) precisa de texto
+  // escuro, textSecondary (fundo escuro) precisa de texto claro; um
+  // `color: colors.surface` único reprovava contraste no badge
+  // "Publicado" (1.84:1, achado de auditoria 2026-09-21).
+  statusBadgeTextPublished: {
+    color: colors.textPrimary,
+  },
+  statusBadgeTextDraft: {
     color: colors.surface,
   },
   itemTextColumn: {
@@ -2148,8 +2189,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyFallback,
     fontWeight: "600",
     fontSize: 14,
-    color: colors.surface,
     textAlign: "center",
+  },
+  // Sage (toastSuccess) é claro demais pra texto surface (1.84:1,
+  // achado de auditoria 2026-09-21) — precisa de texto escuro. Danger
+  // (toastError) é escuro o bastante pra manter texto surface (claro).
+  toastTextSuccess: {
+    color: colors.textPrimary,
+  },
+  toastTextError: {
+    color: colors.surface,
   },
   modalOverlay: {
     position: "absolute",

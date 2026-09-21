@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Image,
   Linking,
   Platform,
@@ -69,6 +70,12 @@ function stripLeadingTitle(text: string, title: string): string {
     return lines.slice(1).join("\n").replace(/^\n+/, "");
   }
   return text;
+}
+
+function openUrlSafely(url: string) {
+  Linking.openURL(url).catch(() =>
+    Alert.alert("Não foi possível abrir", "Verifique sua conexão e tente novamente.")
+  );
 }
 
 export function ItemDetailScreen({ route, navigation }: Props) {
@@ -249,7 +256,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
           </Text>
           <PressableScale
             style={styles.playButton}
-            onPress={() => Linking.openURL(item.fileUrl!)}
+            onPress={() => openUrlSafely(item.fileUrl!)}
             accessibilityRole="button"
             accessibilityLabel="Abrir arquivo"
           >
@@ -323,7 +330,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
           ) : (
             <PressableScale
               style={styles.playButton}
-              onPress={() => Linking.openURL(item.streamingUrl!)}
+              onPress={() => openUrlSafely(item.streamingUrl!)}
               accessibilityRole="button"
               accessibilityLabel={`Abrir ${label}`}
             >
@@ -388,6 +395,10 @@ export function ItemDetailScreen({ route, navigation }: Props) {
               <View style={styles.volumeRow}>
                 <PressableScale
                   style={styles.volumeButton}
+                  // Botão visual de 36px (abaixo do minTouchSize de 44 —
+                  // achado de auditoria 2026-09-21); hitSlop compensa a
+                  // área de toque sem alterar o tamanho visual do círculo.
+                  hitSlop={8}
                   onPress={() => changeVolume(-VOLUME_STEP)}
                   accessibilityRole="button"
                   accessibilityLabel="Diminuir volume"
@@ -399,6 +410,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
                 </View>
                 <PressableScale
                   style={styles.volumeButton}
+                  hitSlop={8}
                   onPress={() => changeVolume(VOLUME_STEP)}
                   accessibilityRole="button"
                   accessibilityLabel="Aumentar volume"

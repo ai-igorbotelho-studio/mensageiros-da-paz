@@ -22,19 +22,28 @@ export const colors = {
   // (roxo sobre roxo, ilegível — relatado 2026-09-21); esse tom claro dá
   // contraste suficiente mesmo sem ser o branco puro do item ativo.
   inverseMuted: "#E7C9E3",
+  // Diferenciação visual do painel Admin em relação ao app público
+  // (2026-09-21) — um cinza-greige neutro no lugar do Pale apricot do
+  // app, sem escurecer nada (uma tentativa de fundo escuro foi revertida
+  // por ficar ruim). Só usado em AdminScreen.tsx.
+  adminBackground: "#EFE8DD",
 } as const;
 
+// Variante escura da paleta — NÃO tem nenhum consumidor em produção hoje
+// (confirmado por grep, 2026-09-21). Foi usada brevemente num fundo
+// escuro do Admin, revertido a pedido do Head por ficar ruim (ver
+// DECISIONS.md) — o Admin hoje usa cores claras próprias
+// (`ADMIN_BG`/`ADMIN_SURFACE` em `screens/AdminScreen.tsx`), não estas.
+// Mantida em standby (não removida) caso um modo escuro real do app
+// volte a ser cogitado no futuro — `primary` já vem clareada pra
+// #C77FC0 pra ter contraste suficiente como texto/link sobre fundo
+// quase-preto, caso essa hora chegue.
 export const darkColors = {
   ...colors,
   background: colors.darkBackground,
   surface: "#122A1F",
   textPrimary: "#FFEDDF",
   textSecondary: "#D89ED1",
-  // Mulberry (#803C7A) sozinho como texto/link sobre o fundo quase-preto
-  // tem contraste baixo — clareado pra #C77FC0 só neste tom, mantendo o
-  // mesmo matiz. Usado hoje na tela de Admin (fundo escuro proposital,
-  // pra diferenciar do app — 2026-09-21) e já documentado no Guia do
-  // Admin > Identidade Visual, seção "modo escuro".
   primary: "#C77FC0",
 } as const;
 
@@ -58,6 +67,10 @@ export const fonts = {
   body: "Lexend",
   bodyMedium: "Lexend",
   bodyFallback: "Lexend, system-ui, sans-serif",
+  // Não usado em nenhum componente do app hoje (confirmado por grep,
+  // 2026-09-21) — por isso `loadWebFonts.ts` parou de baixar DM Mono do
+  // Google Fonts. Mantido aqui só como token de referência (cai no
+  // fallback monoespaçado do sistema se algo vier a usar).
   mono: "DM Mono, ui-monospace, monospace",
 };
 
