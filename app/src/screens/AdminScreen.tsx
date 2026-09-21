@@ -96,7 +96,7 @@ const CATEGORY_SHEET_URL: Record<ContentCategory, string> = {
   oracoes:
     "https://docs.google.com/spreadsheets/d/1Hz3lTmV4ubosdQEFhE91RkYxrRf8AhCvFF7kHciO7tk/edit?usp=sharing",
   livros:
-    "https://docs.google.com/spreadsheets/d/13lZFo5BqKuoM1bbPXzSEV9nBJLL_JpNK4ijGrM7XPJI/edit?usp=sharing",
+    "https://docs.google.com/spreadsheets/d/1LKTCZBxk7Auotzb7ud9Z-HQ8a9E6I2xtYQRUpVptw34/edit?usp=sharing",
   textos:
     "https://docs.google.com/spreadsheets/d/1wo1EkVy5bo8o6rZNUYSCrH2oDAJuiw-hQAR5s7oLIT4/edit?usp=sharing",
   musicas:
