@@ -16,6 +16,11 @@ export const colors = {
   textSecondary: "#6B4463", // tom escurecido de Mulberry, para texto secundário legível
   success: "#3BCFA9", // Sage
   darkBackground: "#00170C", // Deep mint
+  // Texto/ícone "inativo" sobre fundo `primary` sólido (ex.: BottomNavBar
+  // invertida) — `primaryLight` sobre `primary` tem contraste baixo demais
+  // (roxo sobre roxo, ilegível — relatado 2026-09-21); esse tom claro dá
+  // contraste suficiente mesmo sem ser o branco puro do item ativo.
+  inverseMuted: "#E7C9E3",
 } as const;
 
 export const darkColors = {

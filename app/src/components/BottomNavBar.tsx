@@ -58,7 +58,7 @@ export function BottomNavBar({ active }: Props) {
               accessibilityLabel={tab.label}
               accessibilityState={{ selected: isActive }}
             >
-              <tab.Icon size={20} color={isActive ? colors.surface : colors.primaryLight} />
+              <tab.Icon size={20} color={isActive ? colors.surface : colors.inverseMuted} />
               <Text style={[styles.label, isActive && styles.labelActive]}>
                 {tab.label}
               </Text>
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: fonts.bodyFallback,
     fontSize: 11,
-    color: colors.primaryLight,
+    color: colors.inverseMuted,
   },
   labelActive: {
     color: colors.surface,
