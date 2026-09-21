@@ -67,7 +67,13 @@ export function BottomNavBar({ active }: Props) {
               Icon={tab.Icon}
               isActive={isActive}
               onPress={() => {
-                if (isActive) return;
+                // Antes só navegava se a categoria não fosse a "ativa" —
+                // mas "ativa" também é true dentro do detalhe de um item
+                // (ItemDetailScreen passa `active={item.category}`), e
+                // aí tocar em "Orações" não fazia nada, sem voltar pra
+                // lista (relatado 2026-09-21). Sempre navega: se já
+                // estiver na própria lista da categoria, o
+                // native-stack só mantém a tela, sem duplicar.
                 navigation.navigate("ContentList", {
                   category: tab.category,
                   title: tab.label,
