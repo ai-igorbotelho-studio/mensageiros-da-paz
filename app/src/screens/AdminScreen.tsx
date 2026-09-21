@@ -319,6 +319,12 @@ function AdminDashboard({ user }: { user: User }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  // "Apagar todos" virou "selecionar e apagar" (2026-09-21, a pedido do
+  // Head): um botão único apagando a categoria inteira num toque era
+  // perigoso demais — agora exige entrar em modo de seleção e marcar os
+  // itens antes de qualquer exclusão em lote.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [importOpen, setImportOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
@@ -373,6 +379,8 @@ function AdminDashboard({ user }: { user: User }) {
     setConfirmDeleteAll(false);
     setExpandedId(null);
     setConfirmDeleteId(null);
+    setSelectMode(false);
+    setSelectedIds(new Set());
     loadItems();
     // A categoria escolhida na Biblioteca e a categoria do formulário
     // "Novo item" eram estados independentes: trocar a categoria não
@@ -499,19 +507,39 @@ function AdminDashboard({ user }: { user: User }) {
     }
   }
 
-  async function removeAllInCategory() {
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) =>
+      prev.size === sortedItems.length ? new Set() : new Set(sortedItems.map((i) => i.id))
+    );
+  }
+
+  async function removeSelected() {
+    if (selectedIds.size === 0) return;
     if (!confirmDeleteAll) {
       setConfirmDeleteAll(true);
       return;
     }
     setDeletingAll(true);
     try {
-      for (const item of items) {
-        await adminDeleteItem(item.id);
+      for (const id of selectedIds) {
+        await adminDeleteItem(id);
       }
-      notify(`Todos os itens de ${CATEGORY_LABEL[category]} foram apagados.`);
+      notify(`${selectedIds.size} item(ns) apagado(s) de ${CATEGORY_LABEL[category]}.`);
+      setSelectedIds(new Set());
+      setSelectMode(false);
       loadItems();
       refreshCounts();
+    } catch {
+      notify("Não foi possível apagar os itens selecionados.", "error");
     } finally {
       setDeletingAll(false);
       setConfirmDeleteAll(false);
@@ -908,14 +936,24 @@ function AdminDashboard({ user }: { user: User }) {
               ) : (
                 sortedItems.map((item, index) => {
                   const expanded = expandedId === item.id;
+                  const selected = selectedIds.has(item.id);
                   return (
                     <View key={item.id} style={styles.accordionCard}>
                       <Pressable
                         style={styles.accordionHeader}
-                        onPress={() => setExpandedId(expanded ? null : item.id)}
-                        accessibilityRole="button"
-                        accessibilityState={{ expanded }}
+                        onPress={() =>
+                          selectMode
+                            ? toggleSelected(item.id)
+                            : setExpandedId(expanded ? null : item.id)
+                        }
+                        accessibilityRole={selectMode ? "checkbox" : "button"}
+                        accessibilityState={selectMode ? { checked: selected } : { expanded }}
                       >
+                        {selectMode ? (
+                          <View style={[styles.checkbox, selected && styles.checkboxChecked]}>
+                            {selected ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                          </View>
+                        ) : null}
                         <View style={styles.itemTextColumn}>
                           <Text style={styles.itemTitle}>{item.title}</Text>
                           <View style={styles.badgeRow}>
@@ -932,10 +970,10 @@ function AdminDashboard({ user }: { user: User }) {
                             <Text style={styles.itemMeta}>ordem {item.order}</Text>
                           </View>
                         </View>
-                        <Chevron expanded={expanded} />
+                        {!selectMode ? <Chevron expanded={expanded} /> : null}
                       </Pressable>
 
-                      {expanded ? (
+                      {expanded && !selectMode ? (
                         <View style={styles.accordionBody}>
                           {item.description ? (
                             <Text style={styles.itemDescription}>{item.description}</Text>
@@ -988,20 +1026,63 @@ function AdminDashboard({ user }: { user: User }) {
               {!itemsLoading && sortedItems.length > 0 ? (
                 <>
                   <View style={styles.divider} />
-                  <Pressable
-                    style={[styles.dangerButton, deletingAll && styles.buttonDisabled]}
-                    onPress={removeAllInCategory}
-                    disabled={deletingAll}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.dangerButtonText}>
-                      {deletingAll
-                        ? "Apagando…"
-                        : confirmDeleteAll
-                          ? `Confirmar: apagar ${items.length} itens de ${CATEGORY_LABEL[category]}?`
-                          : `Apagar todos de ${CATEGORY_LABEL[category]} (${items.length})`}
-                    </Text>
-                  </Pressable>
+                  {!selectMode ? (
+                    <Pressable
+                      style={styles.selectModeButton}
+                      onPress={() => setSelectMode(true)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.selectModeButtonText}>Selecionar itens para apagar</Text>
+                    </Pressable>
+                  ) : (
+                    <>
+                      <View style={styles.selectBar}>
+                        <Pressable onPress={toggleSelectAll} accessibilityRole="button">
+                          <Text style={styles.link}>
+                            {selectedIds.size === sortedItems.length
+                              ? "Desmarcar todos"
+                              : "Selecionar todos"}
+                          </Text>
+                        </Pressable>
+                        <Text style={styles.itemMeta}>
+                          {selectedIds.size} de {sortedItems.length} selecionado(s)
+                        </Text>
+                      </View>
+                      <View style={styles.formButtonsRow}>
+                        <Pressable
+                          style={[
+                            styles.dangerButton,
+                            styles.selectDeleteButton,
+                            (selectedIds.size === 0 || deletingAll) && styles.buttonDisabled,
+                          ]}
+                          onPress={removeSelected}
+                          disabled={selectedIds.size === 0 || deletingAll}
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.dangerButtonText}>
+                            {deletingAll
+                              ? "Apagando…"
+                              : confirmDeleteAll
+                                ? `Confirmar: apagar ${selectedIds.size} item(ns)?`
+                                : selectedIds.size === 0
+                                  ? "Apagar selecionados"
+                                  : `Apagar selecionados (${selectedIds.size})`}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          style={styles.secondaryButton}
+                          onPress={() => {
+                            setSelectMode(false);
+                            setSelectedIds(new Set());
+                            setConfirmDeleteAll(false);
+                          }}
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.secondaryButtonText}>Cancelar</Text>
+                        </Pressable>
+                      </View>
+                    </>
+                  )}
                 </>
               ) : null}
 
@@ -1627,10 +1708,64 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.danger,
-    borderRadius: radii.lg,
+    // Antes radii.lg — única exceção restante à regra "botões sempre
+    // pill" achada numa varredura (2026-09-21).
+    borderRadius: radii.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginTop: spacing.md,
+  },
+  // "Apagar todos" virou um fluxo de seleção (2026-09-21, a pedido do
+  // Head — um botão só apagando a categoria inteira era perigoso
+  // demais): este botão neutro entra no modo de seleção, sem nenhum
+  // efeito destrutivo por si só.
+  selectModeButton: {
+    minHeight: minTouchSize,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.textSecondary,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginTop: spacing.md,
+  },
+  selectModeButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  selectBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  selectDeleteButton: {
+    flex: 1,
+    marginTop: 0,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: radii.sm,
+    borderWidth: 1.5,
+    borderColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.sm,
+    flexShrink: 0,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkboxMark: {
+    color: colors.surface,
+    fontSize: 14,
+    fontWeight: "700",
   },
   dangerButtonText: {
     fontFamily: fonts.bodyFallback,
