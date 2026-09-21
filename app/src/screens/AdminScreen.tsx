@@ -210,7 +210,7 @@ export function AdminScreen() {
   if (!user) {
     return (
       <View style={styles.loginContainer}>
-        <View style={styles.adminBanner}>
+        <View style={[styles.adminBanner, styles.adminBannerStatic]}>
           <Text style={styles.adminBannerText}>Painel administrativo</Text>
         </View>
         <Text style={styles.title}>Admin</Text>
@@ -420,6 +420,26 @@ function AdminDashboard({ user }: { user: User }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category]);
+
+  // "Painel administrativo" no cabeçalho funciona como HOME do Admin
+  // (a pedido do Head, 2026-09-21) — volta pra visão geral da
+  // Biblioteca, descartando qualquer edição/seleção/importação em
+  // andamento, igual o logo "Mensageiros da Paz" volta pra Home do
+  // app público.
+  function goToAdminHome() {
+    setActiveTab("library");
+    setShowAllLibrary(true);
+    setExpandedId(null);
+    setConfirmDeleteId(null);
+    setConfirmDeleteAll(false);
+    setSelectMode(false);
+    setSelectedIds(new Set());
+    setManualOpen(false);
+    setEditingId(null);
+    setEditingOriginalTitle(null);
+    setFormError(null);
+    setImportOpen(false);
+  }
 
   async function savePractice() {
     try {
@@ -745,15 +765,27 @@ function AdminDashboard({ user }: { user: User }) {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.adminBanner}>
-        <Text style={styles.adminBannerText}>Painel administrativo</Text>
-      </View>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Admin</Text>
-        <PressableScale onPress={() => adminSignOut()} accessibilityRole="button" accessibilityLabel="Sair">
+        <PressableScale
+          style={styles.adminBanner}
+          onPress={goToAdminHome}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Painel administrativo — voltar para a visão geral"
+        >
+          <Text style={styles.adminBannerText}>Painel administrativo</Text>
+        </PressableScale>
+        <PressableScale
+          style={styles.signOutButton}
+          onPress={() => adminSignOut()}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Sair"
+        >
           <Text style={styles.link}>Sair</Text>
         </PressableScale>
       </View>
+      <Text style={styles.title}>Admin</Text>
       <Text style={styles.helper}>Logado como {user.email}</Text>
 
       <View style={styles.tabRow}>
@@ -1623,10 +1655,13 @@ const styles = StyleSheet.create({
   },
   adminBanner: {
     alignSelf: "flex-start",
+    minHeight: minTouchSize,
     backgroundColor: colors.primary,
     borderRadius: radii.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    justifyContent: "center",
+  },
+  adminBannerStatic: {
     marginBottom: spacing.sm,
   },
   adminBannerText: {
@@ -1637,10 +1672,18 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: colors.surface,
   },
+  signOutButton: {
+    minHeight: minTouchSize,
+    minWidth: minTouchSize,
+    paddingHorizontal: spacing.sm,
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: spacing.sm,
   },
   title: {
     fontFamily: fonts.displayFallback,
