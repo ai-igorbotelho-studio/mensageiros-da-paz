@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   arrowCircle: {
     width: 34,
     height: 34,
-    borderRadius: 17,
+    borderRadius: radii.pill,
     borderWidth: 1.5,
     borderColor: colors.primary,
     alignItems: "center",

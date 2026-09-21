@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { colors, fonts, minTouchSize, spacing } from "@/theme/tokens";
+import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
 import { PressableScale } from "@/components/PressableScale";
 import type { ContentCategory, RootStackParamList } from "@/types";
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     width: "92%",
     maxWidth: 420,
     flexDirection: "row",
-    borderRadius: 999,
+    borderRadius: radii.pill,
     backgroundColor: colors.primary,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.xs,

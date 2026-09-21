@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { StyleSheet, Switch, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { colors, fonts, spacing } from "@/theme/tokens";
+import { colors, fonts, radii, spacing } from "@/theme/tokens";
+import { PressableScale } from "@/components/PressableScale";
 import {
   disableNotifications,
   enableNotifications,
@@ -78,7 +79,12 @@ export function SettingsScreen({ navigation }: Props) {
           onValueChange={handleToggle}
           disabled={loading || pushUnavailable}
           trackColor={{ false: colors.textSecondary, true: colors.primaryLight }}
-          thumbColor={enabled ? colors.primary : colors.surface}
+          // O polegar ativo era colors.primary (roxo) sobre a trilha
+          // primaryLight (roxo mais claro) — o mesmo "roxo sobre roxo"
+          // de baixo contraste já corrigido na barra de navegação
+          // (achado na auditoria de direção criativa pré-V1.0). surface
+          // (creme claro) contrasta em ambos os estados.
+          thumbColor={colors.surface}
           accessibilityLabel="Ativar notificações"
         />
       </View>
@@ -92,13 +98,14 @@ export function SettingsScreen({ navigation }: Props) {
       ) : null}
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
-      <Pressable
+      <PressableScale
         style={styles.adminLink}
         onPress={() => navigation.navigate("Admin")}
         accessibilityRole="button"
+        accessibilityLabel="Área de administração"
       >
         <Text style={styles.adminLinkText}>Área de administração</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -120,7 +127,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: radii.md,
     padding: spacing.md,
   },
   textColumn: {
@@ -142,7 +149,9 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: fonts.bodyFallback,
     fontSize: 14,
-    color: colors.accent,
+    // Antes usava colors.accent (Sage, a cor de SUCESSO) — uma
+    // mensagem de erro aparecia verde, comunicando o oposto do texto.
+    color: colors.danger,
     marginTop: spacing.md,
   },
   notice: {

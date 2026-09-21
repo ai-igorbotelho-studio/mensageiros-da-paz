@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.textSecondary,
-    borderRadius: radii.lg,
+    borderRadius: radii.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.textSecondary,
-    borderRadius: 18,
+    borderRadius: radii.pill,
   },
   volumeButtonText: {
     fontFamily: fonts.bodyFallback,
@@ -555,7 +555,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primary,
-    borderRadius: radii.lg,
+    // Antes radii.lg (retangular arredondado) — o resto do app segue a
+    // regra "botões sempre pill" (BottomNavBar, ErrorState); esses
+    // eram os únicos CTAs destoando dela (achado na auditoria pré-V1.0).
+    borderRadius: radii.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
