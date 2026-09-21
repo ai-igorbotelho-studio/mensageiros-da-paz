@@ -175,6 +175,11 @@
     margin-bottom: 8px;
     border-bottom: 1px solid var(--border);
   }
+  /* Botão sólido na cor da marca (não a mesma linguagem visual de
+     card/input do conteúdo — ex.: ref-card, search input) — é controle
+     de navegação da página, não conteúdo, então precisa ler como algo
+     diferente à primeira vista (achado do Head 2026-09-21: confundia
+     com o resto). */
   .toc-menu-btn {
     width: 100%;
     display: flex;
@@ -182,19 +187,31 @@
     justify-content: space-between;
     gap: 10px;
     font-family: "Lexend", system-ui, sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--primary);
-    background: var(--surface);
-    border: 1px solid var(--primary-light);
+    letter-spacing: 0.3px;
+    color: var(--surface);
+    background: var(--primary);
+    border: none;
     border-radius: 12px;
     padding: 12px 16px;
     cursor: pointer;
+    box-shadow: 0 2px 10px rgba(128, 60, 122, 0.28);
     transition: box-shadow 0.15s ease, transform 0.15s ease;
   }
-  .toc-menu-btn:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+  .toc-menu-btn .eyebrow-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--surface) 70%, transparent);
+    display: block;
+    margin-bottom: 1px;
+  }
+  .toc-menu-btn:hover { box-shadow: 0 4px 14px rgba(128, 60, 122, 0.38); }
   .toc-menu-btn .arrow {
     font-size: 12px;
+    color: var(--surface);
     transition: transform 0.18s ease;
     flex: none;
   }
@@ -812,7 +829,10 @@
 
   <nav class="toc-menu">
     <button type="button" class="toc-menu-btn" id="tocMenuBtn" aria-expanded="false" aria-controls="tocMenuList">
-      <span id="tocMenuLabel">Navegar por seção</span>
+      <span>
+        <span class="eyebrow-label">Navegar por seção</span>
+        <span id="tocMenuLabel">Navegar por seção</span>
+      </span>
       <span class="arrow">▾</span>
     </button>
     <ul class="toc-menu-list" id="tocMenuList" hidden>
