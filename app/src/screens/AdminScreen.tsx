@@ -24,6 +24,13 @@ import {
   type ItemFormValues,
 } from "@/firebase/admin";
 import { syncPracticeToSheet } from "@/integrations/practiceSheetSync";
+import {
+  guessFieldForHeader,
+  IMPORT_FIELD_LABEL,
+  parseCsv,
+  toSheetCsvUrl,
+  type ImportField,
+} from "@/utils/sheetImport";
 import type {
   ContentCategory,
   ContentItem,
@@ -59,6 +66,23 @@ const CATEGORY_LABEL: Record<ContentCategory, string> = {
 
 const PRACTICE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1XW55nKnnHtEEfp6tNDDQHI-XW_4aONsXMKBWI1s4OAA/edit?usp=sharing";
+
+const DEFAULT_IMPORT_FILE_TYPE: Record<ContentCategory, FileType> = {
+  oracoes: "gdoc",
+  musicas: "audio",
+  textos: "gdoc",
+  livros: "pdf",
+};
+
+const IMPORT_FIELD_OPTIONS: ImportField[] = [
+  "ignore",
+  "title",
+  "description",
+  "text",
+  "fileUrl",
+  "fileType",
+  "order",
+];
 
 const CATEGORY_SHEET_URL: Record<ContentCategory, string> = {
   oracoes:
@@ -188,6 +212,16 @@ function AdminDashboard({ user }: { user: User }) {
   const [deletingAll, setDeletingAll] = useState(false);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
 
+  const [importOpen, setImportOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [importRows, setImportRows] = useState<string[][]>([]);
+  const [importMapping, setImportMapping] = useState<ImportField[]>([]);
+  const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
+  const [importRunning, setImportRunning] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
+
   useEffect(() => {
     adminGetPracticeOfTheWeek()
       .then(({ text, inspiration }) => {
@@ -309,6 +343,131 @@ function AdminDashboard({ user }: { user: User }) {
     }
   }
 
+  async function openImport() {
+    setImportOpen(true);
+    setImportLoading(true);
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const csvUrl = toSheetCsvUrl(CATEGORY_SHEET_URL[category]);
+      if (!csvUrl) throw new Error("URL inválida");
+      const res = await fetch(csvUrl);
+      if (!res.ok) throw new Error("fetch failed");
+      const text = await res.text();
+      const table = parseCsv(text);
+      if (table.length === 0) {
+        setImportHeaders([]);
+        setImportRows([]);
+        return;
+      }
+      const [header, ...rows] = table;
+      setImportHeaders(header);
+      setImportRows(rows);
+      setImportMapping(header.map(guessFieldForHeader));
+      setImportSelected(new Set(rows.map((_, i) => i)));
+    } catch {
+      setImportError(
+        "Não conseguimos ler a planilha. Confira se ela está compartilhada como \"Qualquer pessoa com o link\"."
+      );
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  function closeImport() {
+    setImportOpen(false);
+    setImportHeaders([]);
+    setImportRows([]);
+    setImportMapping([]);
+    setImportSelected(new Set());
+    setImportResult(null);
+    setImportError(null);
+  }
+
+  function cycleMapping(columnIndex: number) {
+    setImportMapping((current) => {
+      const next = [...current];
+      const currentIndex = IMPORT_FIELD_OPTIONS.indexOf(next[columnIndex] ?? "ignore");
+      next[columnIndex] = IMPORT_FIELD_OPTIONS[(currentIndex + 1) % IMPORT_FIELD_OPTIONS.length];
+      return next;
+    });
+  }
+
+  function toggleRowSelected(rowIndex: number) {
+    setImportSelected((current) => {
+      const next = new Set(current);
+      if (next.has(rowIndex)) next.delete(rowIndex);
+      else next.add(rowIndex);
+      return next;
+    });
+  }
+
+  function valueForField(row: string[], field: ImportField): string {
+    const columnIndex = importMapping.indexOf(field);
+    if (columnIndex === -1) return "";
+    return (row[columnIndex] ?? "").trim();
+  }
+
+  async function runImport() {
+    setImportRunning(true);
+    setImportResult(null);
+    let created = 0;
+    let skipped = 0;
+    let failed = 0;
+    let order = items.length + 1;
+    try {
+      for (const rowIndex of importSelected) {
+        const row = importRows[rowIndex];
+        if (!row) continue;
+        const title = valueForField(row, "title");
+        if (!title) {
+          skipped++;
+          continue;
+        }
+        const fileUrl = valueForField(row, "fileUrl");
+        const text = valueForField(row, "text");
+        const rawFileType = valueForField(row, "fileType").toLowerCase();
+        const fileType: FileType = (["pdf", "image", "audio", "gdoc"] as FileType[]).includes(
+          rawFileType as FileType
+        )
+          ? (rawFileType as FileType)
+          : DEFAULT_IMPORT_FILE_TYPE[category];
+        const rawOrder = valueForField(row, "order");
+        const parsedOrder = Number(rawOrder);
+
+        const values: ItemFormValues = {
+          title,
+          description: valueForField(row, "description"),
+          category,
+          source: "upload",
+          text,
+          fileUrl,
+          fileType,
+          streamingProvider: "spotify",
+          streamingUrl: "",
+          order: Number.isFinite(parsedOrder) && rawOrder ? parsedOrder : order,
+          published: true,
+        };
+
+        try {
+          await adminCreateItem(values, user.email ?? "admin");
+          created++;
+          order++;
+        } catch {
+          failed++;
+        }
+      }
+      setImportResult(
+        `${created} importado(s)${skipped ? `, ${skipped} sem título (ignorado(s))` : ""}${
+          failed ? `, ${failed} com erro` : ""
+        }.`
+      );
+      loadItems();
+    } finally {
+      setImportRunning(false);
+    }
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.headerRow}>
@@ -394,16 +553,132 @@ function AdminDashboard({ user }: { user: User }) {
       <View style={styles.libraryCard}>
         <View style={styles.libraryCardHeader}>
           <Text style={styles.libraryCardTitle}>{CATEGORY_LABEL[category]}</Text>
-          <Pressable
-            style={styles.sheetButton}
-            onPress={() => Linking.openURL(CATEGORY_SHEET_URL[category])}
-            accessibilityRole="link"
-          >
-            <Text style={styles.sheetButtonText}>
-              Índice de {CATEGORY_LABEL[category]} (planilha) →
-            </Text>
-          </Pressable>
+          <View style={styles.libraryCardButtonsRow}>
+            <Pressable
+              style={styles.sheetButton}
+              onPress={() => Linking.openURL(CATEGORY_SHEET_URL[category])}
+              accessibilityRole="link"
+            >
+              <Text style={styles.sheetButtonText}>
+                Índice de {CATEGORY_LABEL[category]} (planilha) →
+              </Text>
+            </Pressable>
+            <Pressable
+              style={styles.importButton}
+              onPress={openImport}
+              accessibilityRole="button"
+            >
+              <Text style={styles.importButtonText}>Importar da planilha</Text>
+            </Pressable>
+          </View>
         </View>
+
+        {importOpen ? (
+          <View style={styles.importPanel}>
+            <View style={styles.headerRow}>
+              <Text style={styles.libraryCardTitle}>
+                Importar {CATEGORY_LABEL[category]}
+              </Text>
+              <Pressable onPress={closeImport} accessibilityRole="button">
+                <Text style={styles.link}>Fechar</Text>
+              </Pressable>
+            </View>
+
+            {importLoading ? (
+              <Text style={styles.helper}>Lendo a planilha…</Text>
+            ) : importError ? (
+              <Text style={styles.error}>{importError}</Text>
+            ) : importRows.length === 0 ? (
+              <Text style={styles.helper}>
+                Nenhuma linha encontrada nessa planilha.
+              </Text>
+            ) : (
+              <>
+                <Text style={styles.fieldHint}>
+                  Toque em cada coluna abaixo pra escolher o que ela é
+                  (título, descrição/autor, link, etc). Já tentamos
+                  adivinhar pelo nome da coluna.
+                </Text>
+                <View style={styles.categoryRow}>
+                  {importHeaders.map((header, columnIndex) => (
+                    <Pressable
+                      key={`${header}-${columnIndex}`}
+                      style={[
+                        styles.categoryChip,
+                        importMapping[columnIndex] !== "ignore" &&
+                          styles.categoryChipActive,
+                      ]}
+                      onPress={() => cycleMapping(columnIndex)}
+                      accessibilityRole="button"
+                    >
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          importMapping[columnIndex] !== "ignore" &&
+                            styles.categoryChipTextActive,
+                        ]}
+                      >
+                        {header || `Coluna ${columnIndex + 1}`}:{" "}
+                        {IMPORT_FIELD_LABEL[importMapping[columnIndex] ?? "ignore"]}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Text style={styles.fieldHint}>
+                  Selecione as linhas que quer importar ({importSelected.size} de{" "}
+                  {importRows.length}):
+                </Text>
+                {importRows.map((row, rowIndex) => {
+                  const title = valueForField(row, "title") || "(sem título)";
+                  const description = valueForField(row, "description");
+                  return (
+                    <Pressable
+                      key={rowIndex}
+                      style={styles.importRow}
+                      onPress={() => toggleRowSelected(rowIndex)}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: importSelected.has(rowIndex) }}
+                    >
+                      <Switch
+                        value={importSelected.has(rowIndex)}
+                        onValueChange={() => toggleRowSelected(rowIndex)}
+                        trackColor={{ false: colors.textSecondary, true: colors.primaryLight }}
+                        thumbColor={importSelected.has(rowIndex) ? colors.primary : colors.surface}
+                      />
+                      <View style={styles.itemTextColumn}>
+                        <Text style={styles.itemTitle}>{title}</Text>
+                        {description ? (
+                          <Text style={styles.itemDescription}>{description}</Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+
+                {importResult ? (
+                  <Text style={styles.success}>{importResult}</Text>
+                ) : null}
+
+                <Pressable
+                  style={[
+                    styles.primaryButton,
+                    (importRunning || importSelected.size === 0) && styles.buttonDisabled,
+                  ]}
+                  onPress={runImport}
+                  disabled={importRunning || importSelected.size === 0}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {importRunning
+                      ? "Importando…"
+                      : `Importar ${importSelected.size} selecionado(s)`}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        ) : null}
 
         {!itemsLoading && items.length > 0 ? (
           <Pressable
@@ -844,6 +1119,40 @@ const styles = StyleSheet.create({
   },
   libraryCardHeader: {
     marginBottom: spacing.sm,
+  },
+  libraryCardButtonsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  importButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  importButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.accent,
+  },
+  importPanel: {
+    backgroundColor: colors.background,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  importRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   libraryCardTitle: {
     fontFamily: fonts.bodyFallback,
