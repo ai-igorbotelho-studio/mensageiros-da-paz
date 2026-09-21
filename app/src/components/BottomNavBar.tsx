@@ -24,68 +24,74 @@ interface Props {
 
 /**
  * Barra de navegação flutuante, fixa na mesma posição em TODAS as
- * páginas — inclusive a Home (2026-09-21, a pedido do Head: era o único
- * menu de navegação entre categorias, mas a Home também tinha os 4
- * botões grandes de categoria, duplicando a mesma ação de duas formas
- * diferentes; os botões grandes foram removidos da Home e esta barra
- * passou a ser o único menu, "flutuando" sobre o conteúdo em vez de
- * empurrar o layout, com a mesma posição/aparência em todo lugar).
+ * páginas — inclusive a Home. Cor invertida (fundo roxo sólido, ícones
+ * e texto claros, sem borda) e sempre centralizada horizontalmente com
+ * largura própria, em vez de esticar de ponta a ponta em telas largas
+ * (2026-09-21, a pedido do Head — antes `left`/`right` fixos faziam a
+ * barra ocupar a tela inteira em desktop, já que `maxWidth` não tem
+ * efeito quando `left` e `right` estão os dois definidos num elemento
+ * `position: absolute`). Por isso o wrapper externo ocupa a tela toda
+ * só pra centralizar (`alignItems: "center"`), e a barra em si é quem
+ * tem a largura máxima.
  */
 export function BottomNavBar({ active }: Props) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
-    <View style={styles.bar}>
-      {TABS.map((tab) => {
-        const isActive = tab.category === active;
-        return (
-          <Pressable
-            key={tab.category}
-            style={styles.tab}
-            onPress={() => {
-              if (isActive) return;
-              navigation.navigate("ContentList", {
-                category: tab.category,
-                title: tab.label,
-              });
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={tab.label}
-            accessibilityState={{ selected: isActive }}
-          >
-            <tab.Icon size={20} color={isActive ? colors.primary : colors.textSecondary} />
-            <Text style={[styles.label, isActive && styles.labelActive]}>
-              {tab.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={styles.floatingWrap} pointerEvents="box-none">
+      <View style={styles.bar}>
+        {TABS.map((tab) => {
+          const isActive = tab.category === active;
+          return (
+            <Pressable
+              key={tab.category}
+              style={styles.tab}
+              onPress={() => {
+                if (isActive) return;
+                navigation.navigate("ContentList", {
+                  category: tab.category,
+                  title: tab.label,
+                });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={tab.label}
+              accessibilityState={{ selected: isActive }}
+            >
+              <tab.Icon size={20} color={isActive ? colors.surface : colors.primaryLight} />
+              <Text style={[styles.label, isActive && styles.labelActive]}>
+                {tab.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bar: {
+  floatingWrap: {
     position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
+    left: 0,
+    right: 0,
     bottom: spacing.lg,
-    maxWidth: 480,
-    alignSelf: "center",
+    alignItems: "center",
+  },
+  bar: {
+    width: "92%",
+    maxWidth: 420,
     flexDirection: "row",
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.primary,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.xs,
     ...Platform.select({
-      web: { boxShadow: "0 4px 16px rgba(0,0,0,0.12)" },
+      web: { boxShadow: "0 8px 24px rgba(0,0,0,0.22)" },
       default: {
         shadowColor: "#000",
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
         shadowOffset: { width: 0, height: 4 },
         elevation: 6,
       },
@@ -101,10 +107,10 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: fonts.bodyFallback,
     fontSize: 11,
-    color: colors.textSecondary,
+    color: colors.primaryLight,
   },
   labelActive: {
-    color: colors.primary,
+    color: colors.surface,
     fontWeight: "700",
   },
 });
