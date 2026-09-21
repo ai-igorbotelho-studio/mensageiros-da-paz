@@ -652,32 +652,40 @@
   .palette-view[data-mode="grid"] .palette-band-wrap { display: none; }
   .palette-view[data-mode="band"] .swatch-grid { display: none; }
 
+  /* Antes uma única fileira flex — em telas estreitas os segmentos
+     ficavam finos demais e o nome truncava ("Mul...", "Mag..."), e o
+     texto usava mix-blend-mode pra se adaptar a qualquer cor de fundo,
+     mas isso ficava ilegível em alguns tons (ex.: Magenta — relatado
+     2026-09-21, print mostrando o texto quase impossível de ler).
+     Trocado por uma grade que quebra linha sozinha (2 colunas no
+     celular, mais em telas largas) com nome/hex completos, e cor de
+     texto fixa (branco ou quase-preto) escolhida por segmento conforme
+     o contraste real daquele fundo — nunca mix-blend-mode de novo. */
   .palette-band {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 3px;
     border-radius: 16px;
     overflow: hidden;
     border: 1px solid var(--border);
-    height: 88px;
     margin-bottom: 8px;
   }
+  @media (max-width: 480px) {
+    .palette-band { grid-template-columns: repeat(2, 1fr); }
+  }
   .palette-band .seg {
-    flex: 1;
-    position: relative;
-    min-width: 0;
+    min-height: 76px;
+    display: flex;
+    align-items: flex-end;
+    padding: 10px;
   }
   .palette-band .seg .seg-label {
-    position: absolute;
-    left: 8px;
-    bottom: 8px;
-    right: 8px;
     font-family: ui-monospace, "DM Mono", monospace;
-    font-size: 10.5px;
-    line-height: 1.35;
-    color: #fff;
-    mix-blend-mode: difference;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.45;
+    white-space: normal;
+    word-break: break-word;
   }
   .palette-band-wrap { margin-bottom: 20px; }
   .palette-band-wrap p.subhead { margin-bottom: 8px; }
@@ -1239,15 +1247,15 @@
         <p class="subhead" style="margin-top:0">Modo claro</p>
         <div class="palette-band-wrap">
           <div class="palette-band">
-            <div class="seg" style="background:#803C7A"><span class="seg-label">Mulberry<br>#803C7A</span></div>
-            <div class="seg" style="background:#AF65A8"><span class="seg-label">Magenta<br>#AF65A8</span></div>
-            <div class="seg" style="background:#FFEDDF"><span class="seg-label">Pale apricot<br>#FFEDDF</span></div>
-            <div class="seg" style="background:#FFF6EF"><span class="seg-label">Surface<br>#FFF6EF</span></div>
-            <div class="seg" style="background:#3BCFA9"><span class="seg-label">Sage<br>#3BCFA9</span></div>
-            <div class="seg" style="background:#00170C"><span class="seg-label">Deep mint<br>#00170C</span></div>
-            <div class="seg" style="background:#6B4463"><span class="seg-label">Texto sec.<br>#6B4463</span></div>
-            <div class="seg" style="background:#B3261E"><span class="seg-label">Danger<br>#B3261E</span></div>
-            <div class="seg" style="background:#E7C9E3"><span class="seg-label">Inativo<br>#E7C9E3</span></div>
+            <div class="seg" style="background:#803C7A"><span class="seg-label" style="color:#FFF6EF">Mulberry<br>#803C7A</span></div>
+            <div class="seg" style="background:#AF65A8"><span class="seg-label" style="color:#FFF6EF">Magenta<br>#AF65A8</span></div>
+            <div class="seg" style="background:#FFEDDF"><span class="seg-label" style="color:#00170C">Pale apricot<br>#FFEDDF</span></div>
+            <div class="seg" style="background:#FFF6EF"><span class="seg-label" style="color:#00170C">Surface<br>#FFF6EF</span></div>
+            <div class="seg" style="background:#3BCFA9"><span class="seg-label" style="color:#00170C">Sage<br>#3BCFA9</span></div>
+            <div class="seg" style="background:#00170C"><span class="seg-label" style="color:#FFF6EF">Deep mint<br>#00170C</span></div>
+            <div class="seg" style="background:#6B4463"><span class="seg-label" style="color:#FFF6EF">Texto secundário<br>#6B4463</span></div>
+            <div class="seg" style="background:#B3261E"><span class="seg-label" style="color:#FFF6EF">Danger<br>#B3261E</span></div>
+            <div class="seg" style="background:#E7C9E3"><span class="seg-label" style="color:#00170C">Inativo<br>#E7C9E3</span></div>
           </div>
           <p class="lead" style="margin:0; font-size:12.5px">Faixa combinada mostra como as cores convivem lado a lado — útil pra checar harmonia antes de aplicar numa tela nova.</p>
         </div>
@@ -1331,10 +1339,10 @@
         <p class="subhead">Modo escuro (automático, segue o sistema)</p>
         <div class="palette-band-wrap">
           <div class="palette-band">
-            <div class="seg" style="background:#00170C"><span class="seg-label">Fundo escuro<br>#00170C</span></div>
-            <div class="seg" style="background:#122A1F"><span class="seg-label">Surface escura<br>#122A1F</span></div>
-            <div class="seg" style="background:#C77FC0"><span class="seg-label">Primária escura<br>#C77FC0</span></div>
-            <div class="seg" style="background:#FFEDDF"><span class="seg-label">Texto no escuro<br>#FFEDDF</span></div>
+            <div class="seg" style="background:#00170C"><span class="seg-label" style="color:#FFF6EF">Fundo escuro<br>#00170C</span></div>
+            <div class="seg" style="background:#122A1F"><span class="seg-label" style="color:#FFF6EF">Surface escura<br>#122A1F</span></div>
+            <div class="seg" style="background:#C77FC0"><span class="seg-label" style="color:#00170C">Primária escura<br>#C77FC0</span></div>
+            <div class="seg" style="background:#FFEDDF"><span class="seg-label" style="color:#00170C">Texto no escuro<br>#FFEDDF</span></div>
           </div>
         </div>
         <div class="swatch-grid">
