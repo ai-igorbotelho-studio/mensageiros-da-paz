@@ -164,34 +164,24 @@
      Antes era uma fileira de pills com scroll horizontal — ilegível/
      descoberta ruim em tela estreita (não dava pra ver que rolava, e
      "Identidade visual" ficava sempre cortada na borda). Trocado por um
-     botão que gruda no topo ao rolar, abrindo um menu dropdown vertical
-     — sem rolagem horizontal nenhuma, achado do Head 2026-09-21.
-     Gruda via `.is-pinned` (classe alternada por IntersectionObserver
-     no `<script>` no fim da página) em vez de `position: sticky` puro
-     (2026-09-21, achado do Head: "some ao rolar até o final e não
-     volta") — abrir/fechar as seções em <details> muda a altura da
-     página com o scroll no meio, e o Safari iOS tem um bug conhecido de
-     `position: sticky` "congelar" depois desse tipo de mudança de
-     layout. `.toc-menu-shell` reserva a altura do botão no fluxo normal
-     o tempo todo, então o conteúdo abaixo não pula quando o botão vira
-     `fixed`. */
-  .toc-menu-shell { min-height: 58px; }
-  @media (min-width: 980px) { .toc-menu-shell { display: none; min-height: 0; } }
+     botão que abre um menu dropdown vertical — sem rolagem horizontal
+     nenhuma, achado do Head 2026-09-21.
+     Fica em fluxo normal (nem `sticky` nem `fixed`) — as duas tentativas
+     de "grudar no topo ao rolar" quebraram de formas diferentes
+     (2026-09-21, achados do Head): `position: sticky` "congelava" no
+     Safari iOS depois de abrir/fechar uma seção <details> no meio do
+     scroll; a versão seguinte com `position: fixed` (alternado por
+     IntersectionObserver) cobria o cabeçalho da própria página ao
+     carregar embutida dentro do painel Admin (iframe dentro de área com
+     scroll própria — contexto instável demais pra prever). Sem fixar,
+     não quebra de jeito nenhum — o preço é não seguir a rolagem, mas o
+     sumário lateral (desktop) e a busca continuam disponíveis. */
   nav.toc-menu {
     background: var(--bg);
     padding-block: 10px;
+    margin-bottom: 8px;
     border-bottom: 1px solid var(--border);
   }
-  nav.toc-menu.is-pinned {
-    position: fixed;
-    top: env(safe-area-inset-top, 0px);
-    left: 0;
-    right: 0;
-    z-index: 30;
-    padding-inline: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-  }
-  nav.toc-menu.is-pinned > * { max-width: 1040px; margin-inline: auto; }
   /* Botão sólido na cor da marca (não a mesma linguagem visual de
      card/input do conteúdo — ex.: ref-card, search input) — é controle
      de navegação da página, não conteúdo, então precisa ler como algo
@@ -852,8 +842,7 @@
     <button type="button" class="btn" id="collapseAllBtn"><span class="ico">▸</span> Recolher tudo</button>
   </div>
 
-  <div class="toc-menu-shell" id="tocMenuShell">
-  <nav class="toc-menu" id="tocMenu">
+  <nav class="toc-menu">
     <button type="button" class="toc-menu-btn" id="tocMenuBtn" aria-expanded="false" aria-controls="tocMenuList">
       <span>
         <span class="eyebrow-label">Navegar por seção</span>
@@ -873,7 +862,6 @@
       <li><a href="#identidade">Identidade visual</a></li>
     </ul>
   </nav>
-  </div>
 
   <div class="layout">
     <aside class="sidenav">
@@ -1617,25 +1605,6 @@
         { rootMargin: "-40% 0px -55% 0px" }
       );
       sections.forEach(function (s) { observer.observe(s); });
-    }
-
-    // Gruda o botão no topo (position: fixed) só depois que a página
-    // rolou além do lugar onde ele mora normalmente — em vez de
-    // `position: sticky` puro, que tem um bug conhecido no Safari iOS
-    // de "congelar" depois que uma seção <details> abre/fecha durante o
-    // scroll (2026-09-21, achado do Head: "some ao rolar até o final e
-    // não volta"). `.toc-menu-shell` reserva a altura do botão no fluxo
-    // o tempo todo, então nada pula quando ele fica fixed.
-    var nav = document.getElementById("tocMenu");
-    var shell = document.getElementById("tocMenuShell");
-    if (nav && shell && "IntersectionObserver" in window) {
-      var pinObserver = new IntersectionObserver(
-        function (entries) {
-          nav.classList.toggle("is-pinned", !entries[0].isIntersecting);
-        },
-        { threshold: 0 }
-      );
-      pinObserver.observe(shell);
     }
   })();
 
