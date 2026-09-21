@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import type { User } from "firebase/auth";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
 import {
   adminCreateItem,
   adminDeleteItem,
@@ -71,9 +72,22 @@ const CATEGORY_LABEL: Record<ContentCategory, string> = {
   textos: "Textos",
   livros: "Livros",
 };
+const CATEGORY_ICON: Record<ContentCategory, typeof PrayerIcon> = {
+  oracoes: PrayerIcon,
+  musicas: MusicIcon,
+  textos: TextIcon,
+  livros: BookIcon,
+};
 
 const PRACTICE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1XW55nKnnHtEEfp6tNDDQHI-XW_4aONsXMKBWI1s4OAA/edit?usp=sharing";
+
+// Guia do Admin (referência rápida do painel, com paleta/tipografia/uso)
+// espelhado como uma 3ª aba, na mesma hierarquia de Prática da Semana e
+// Biblioteca — a pedido do Head (2026-09-21). É uma página externa
+// (artifact publicado), não faz parte do bundle do app: a aba abre um
+// link em vez de renderizar o HTML embutido.
+const ADMIN_GUIDE_URL = "https://claude.ai/artifact/SzkcNp6cLFxkGviajjkKUr";
 
 const DEFAULT_IMPORT_FILE_TYPE: Record<ContentCategory, FileType> = {
   oracoes: "gdoc",
@@ -140,11 +154,12 @@ const EMPTY_FORM: ItemFormValues = {
 // e confundia navegação. Agora "Publicação manual" é uma seção
 // recolhível dentro de cada categoria da Biblioteca — só uma tela, só
 // um fluxo por categoria.
-type Tab = "practice" | "library";
+type Tab = "practice" | "library" | "guide";
 
 const TABS: Array<{ key: Tab; label: string }> = [
   { key: "practice", label: "Prática da Semana" },
   { key: "library", label: "Biblioteca" },
+  { key: "guide", label: "Guia do Admin" },
 ];
 
 export function AdminScreen() {
@@ -279,6 +294,14 @@ function AdminDashboard({ user }: { user: User }) {
   });
   const [items, setItems] = useState<ContentItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  // "Biblioteca completa": visão com os itens das 4 categorias juntos,
+  // reaproveitando a mesma busca que já alimenta `categoryCounts` (não
+  // dispara uma segunda leitura ao Firestore).
+  const [libraryOverview, setLibraryOverview] = useState<
+    Record<ContentCategory, ContentItem[]>
+  >({ oracoes: [], musicas: [], textos: [], livros: [] });
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [showAllLibrary, setShowAllLibrary] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -309,15 +332,20 @@ function AdminDashboard({ user }: { user: User }) {
   }, []);
 
   function refreshCounts() {
+    setOverviewLoading(true);
     Promise.all(CATEGORIES.map((c) => adminListItemsByCategory(c)))
       .then((results) => {
-        const next = {} as Record<ContentCategory, number>;
+        const nextCounts = {} as Record<ContentCategory, number>;
+        const nextOverview = {} as Record<ContentCategory, ContentItem[]>;
         CATEGORIES.forEach((c, i) => {
-          next[c] = results[i].length;
+          nextCounts[c] = results[i].length;
+          nextOverview[c] = results[i];
         });
-        setCategoryCounts(next);
+        setCategoryCounts(nextCounts);
+        setLibraryOverview(nextOverview);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setOverviewLoading(false));
   }
 
   useEffect(() => {
@@ -711,6 +739,25 @@ function AdminDashboard({ user }: { user: User }) {
           </View>
         ) : null}
 
+        {activeTab === "guide" ? (
+          <View style={styles.libraryCard}>
+            <Text style={styles.libraryCardTitle}>Guia do Admin</Text>
+            <Text style={styles.helper}>
+              Referência rápida de tudo que dá pra fazer neste painel — passo
+              a passo, colunas de cada planilha, confiabilidade de link e a
+              identidade visual do app (paleta, tipografia, regras de uso).
+              Abre numa página separada.
+            </Text>
+            <Pressable
+              style={styles.primaryButton}
+              onPress={() => Linking.openURL(ADMIN_GUIDE_URL)}
+              accessibilityRole="link"
+            >
+              <Text style={styles.primaryButtonText}>Abrir Guia do Admin →</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {activeTab === "library" ? (
           <>
             <Text style={styles.helper}>
@@ -719,17 +766,39 @@ function AdminDashboard({ user }: { user: User }) {
             </Text>
 
             <View style={styles.categoryRow}>
+              <Pressable
+                style={[styles.categoryChip, showAllLibrary && styles.categoryChipActive]}
+                onPress={() => setShowAllLibrary(true)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: showAllLibrary }}
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    showAllLibrary && styles.categoryChipTextActive,
+                  ]}
+                >
+                  Biblioteca completa
+                </Text>
+              </Pressable>
               {CATEGORIES.map((c) => (
                 <Pressable
                   key={c}
-                  style={[styles.categoryChip, category === c && styles.categoryChipActive]}
-                  onPress={() => setCategory(c)}
+                  style={[
+                    styles.categoryChip,
+                    !showAllLibrary && category === c && styles.categoryChipActive,
+                  ]}
+                  onPress={() => {
+                    setShowAllLibrary(false);
+                    setCategory(c);
+                  }}
                   accessibilityRole="button"
+                  accessibilityState={{ selected: !showAllLibrary && category === c }}
                 >
                   <Text
                     style={[
                       styles.categoryChipText,
-                      category === c && styles.categoryChipTextActive,
+                      !showAllLibrary && category === c && styles.categoryChipTextActive,
                     ]}
                   >
                     {CATEGORY_LABEL[c]} ({categoryCounts[c]})
@@ -738,6 +807,66 @@ function AdminDashboard({ user }: { user: User }) {
               ))}
             </View>
 
+            {showAllLibrary ? (
+              <View style={styles.libraryCard}>
+                <Text style={styles.libraryCardTitle}>Biblioteca completa</Text>
+                <Text style={styles.fieldHint}>
+                  Todos os itens das 4 categorias, agrupados. Toque no título de
+                  uma categoria ou num item pra abrir só aquela categoria.
+                </Text>
+                {overviewLoading ? (
+                  <>
+                    <View style={styles.skeletonRow} />
+                    <View style={styles.skeletonRow} />
+                  </>
+                ) : (
+                  CATEGORIES.map((c) => {
+                    const CatIcon = CATEGORY_ICON[c];
+                    const catItems = [...libraryOverview[c]].sort((a, b) => a.order - b.order);
+                    return (
+                      <View key={c} style={styles.overviewGroup}>
+                        <Pressable
+                          style={styles.overviewGroupHeader}
+                          onPress={() => {
+                            setShowAllLibrary(false);
+                            setCategory(c);
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Abrir categoria ${CATEGORY_LABEL[c]}`}
+                        >
+                          <CatIcon size={18} color={colors.primary} />
+                          <Text style={styles.overviewGroupTitle}>
+                            {CATEGORY_LABEL[c]} ({catItems.length})
+                          </Text>
+                        </Pressable>
+                        {catItems.length === 0 ? (
+                          <Text style={styles.fieldHint}>Nenhum item cadastrado.</Text>
+                        ) : (
+                          catItems.map((item) => (
+                            <Pressable
+                              key={item.id}
+                              style={styles.overviewItemRow}
+                              onPress={() => {
+                                setShowAllLibrary(false);
+                                setCategory(c);
+                              }}
+                              accessibilityRole="button"
+                            >
+                              <Text style={styles.overviewItemTitle} numberOfLines={1}>
+                                {item.title || "(sem título)"}
+                              </Text>
+                              {!item.published ? (
+                                <Text style={styles.overviewItemDraft}>rascunho</Text>
+                              ) : null}
+                            </Pressable>
+                          ))
+                        )}
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            ) : (
             <View style={styles.libraryCard}>
               <View style={styles.libraryCardHeader}>
                 <Text style={styles.libraryCardTitle}>{CATEGORY_LABEL[category]}</Text>
@@ -902,8 +1031,9 @@ function AdminDashboard({ user }: { user: User }) {
                 </Text>
               ) : null}
             </View>
+            )}
 
-            {manualOpen ? (
+            {manualOpen && !showAllLibrary ? (
               <>
             <View style={styles.libraryCard}>
               <Text style={styles.formGroupTitle}>Identificação</Text>
@@ -1354,28 +1484,41 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.md,
     marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radii.pill,
+    padding: spacing.xs / 2,
   },
+  // Trocado de sublinhado fino (pouco destaque, achado do Head) pra
+  // segmented control em pílula: a aba ativa vira um bloco sólido
+  // (fundo `primary`, texto `surface`) com sombra própria — as 3 abas
+  // (Prática da Semana / Biblioteca / Guia do Admin) ficam no mesmo
+  // nível de destaque entre si, 2026-09-21.
   tab: {
     flex: 1,
-    minHeight: minTouchSize - 8,
+    minHeight: minTouchSize - 4,
     alignItems: "center",
     justifyContent: "center",
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primaryLight,
+    borderRadius: radii.pill,
     paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
   },
   tabActive: {
-    borderBottomColor: colors.primary,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   tabText: {
     fontFamily: fonts.bodyFallback,
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
     color: colors.textSecondary,
     textAlign: "center",
   },
   tabTextActive: {
-    color: colors.primary,
+    color: colors.surface,
   },
   sectionTitle: {
     fontFamily: fonts.bodyFallback,
@@ -1646,6 +1789,45 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     opacity: 0.6,
     marginBottom: spacing.xs,
+  },
+  overviewGroup: {
+    marginTop: spacing.md,
+  },
+  overviewGroupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.primaryLight,
+    marginBottom: spacing.xs,
+  },
+  overviewGroupTitle: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 14,
+    color: colors.primary,
+  },
+  overviewItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: minTouchSize - 12,
+    paddingVertical: spacing.xs,
+    paddingLeft: spacing.md,
+    gap: spacing.sm,
+  },
+  overviewItemTitle: {
+    flex: 1,
+    fontFamily: fonts.bodyFallback,
+    fontSize: 13.5,
+    color: colors.textPrimary,
+  },
+  overviewItemDraft: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.textSecondary,
   },
   accordionCard: {
     backgroundColor: colors.background,
