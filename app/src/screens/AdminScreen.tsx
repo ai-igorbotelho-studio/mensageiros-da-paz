@@ -823,6 +823,57 @@ function AdminDashboard({ user }: { user: User }) {
         </PressableScale>
       ) : null}
 
+      {activeTab === "library" ? (
+        <View style={styles.categoryPicker}>
+          <Text style={styles.helper}>
+            Escolha uma categoria para ver tudo que está publicado (e
+            rascunhos, marcados como "(rascunho)") nela.
+          </Text>
+
+          <View style={styles.categoryRow}>
+            <Pressable
+              style={[styles.categoryChip, showAllLibrary && styles.categoryChipActive]}
+              onPress={() => setShowAllLibrary(true)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: showAllLibrary }}
+            >
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  showAllLibrary && styles.categoryChipTextActive,
+                ]}
+              >
+                Biblioteca completa
+              </Text>
+            </Pressable>
+            {CATEGORIES.map((c) => (
+              <Pressable
+                key={c}
+                style={[
+                  styles.categoryChip,
+                  !showAllLibrary && category === c && styles.categoryChipActive,
+                ]}
+                onPress={() => {
+                  setShowAllLibrary(false);
+                  setCategory(c);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: !showAllLibrary && category === c }}
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    !showAllLibrary && category === c && styles.categoryChipTextActive,
+                  ]}
+                >
+                  {CATEGORY_LABEL[c]} ({categoryCounts[c]})
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         {activeTab === "practice" ? (
           <View style={styles.libraryCard}>
@@ -872,53 +923,6 @@ function AdminDashboard({ user }: { user: User }) {
 
         {activeTab === "library" ? (
           <>
-            <Text style={styles.helper}>
-              Escolha uma categoria para ver tudo que está publicado (e
-              rascunhos, marcados como "(rascunho)") nela.
-            </Text>
-
-            <View style={styles.categoryRow}>
-              <Pressable
-                style={[styles.categoryChip, showAllLibrary && styles.categoryChipActive]}
-                onPress={() => setShowAllLibrary(true)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: showAllLibrary }}
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    showAllLibrary && styles.categoryChipTextActive,
-                  ]}
-                >
-                  Biblioteca completa
-                </Text>
-              </Pressable>
-              {CATEGORIES.map((c) => (
-                <Pressable
-                  key={c}
-                  style={[
-                    styles.categoryChip,
-                    !showAllLibrary && category === c && styles.categoryChipActive,
-                  ]}
-                  onPress={() => {
-                    setShowAllLibrary(false);
-                    setCategory(c);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: !showAllLibrary && category === c }}
-                >
-                  <Text
-                    style={[
-                      styles.categoryChipText,
-                      !showAllLibrary && category === c && styles.categoryChipTextActive,
-                    ]}
-                  >
-                    {CATEGORY_LABEL[c]} ({categoryCounts[c]})
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
             {showAllLibrary ? (
               <View style={styles.libraryCard}>
                 <Text style={styles.libraryCardTitle}>Biblioteca completa</Text>
@@ -1674,6 +1678,12 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  // Seletor de categoria da Biblioteca — fora do ScrollView de propósito,
+  // pra ficar fixo na tela enquanto a lista de itens rola por baixo dele
+  // (a pedido do Head, 2026-09-21): antes rolava junto e sumia de vista.
+  categoryPicker: {
+    paddingBottom: spacing.sm,
   },
   loginContainer: {
     flex: 1,
