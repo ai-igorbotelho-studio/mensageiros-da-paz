@@ -57,6 +57,20 @@ const CATEGORY_LABEL: Record<ContentCategory, string> = {
   livros: "Livros",
 };
 
+const PRACTICE_SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/1XW55nKnnHtEEfp6tNDDQHI-XW_4aONsXMKBWI1s4OAA/edit?usp=sharing";
+
+const CATEGORY_SHEET_URL: Record<ContentCategory, string> = {
+  oracoes:
+    "https://docs.google.com/spreadsheets/d/1Hz3lTmV4ubosdQEFhE91RkYxrRf8AhCvFF7kHciO7tk/edit?usp=sharing",
+  livros:
+    "https://docs.google.com/spreadsheets/d/13lZFo5BqKuoM1bbPXzSEV9nBJLL_JpNK4ijGrM7XPJI/edit?usp=sharing",
+  textos:
+    "https://docs.google.com/spreadsheets/d/1wo1EkVy5bo8o6rZNUYSCrH2oDAJuiw-hQAR5s7oLIT4/edit?usp=sharing",
+  musicas:
+    "https://docs.google.com/spreadsheets/d/1tJy1a21XWSQOeTiYOcPXr-Rrt0n54ry_cK2UzZKQoMc/edit?usp=sharing",
+};
+
 const STREAMING_PROVIDERS: StreamingProvider[] = [
   "spotify",
   "youtube",
@@ -296,14 +310,11 @@ function AdminDashboard({ user }: { user: User }) {
       {/* Prática da Semana */}
       <Text style={styles.sectionTitle}>Prática da Semana</Text>
       <Pressable
-        onPress={() =>
-          Linking.openURL(
-            "https://docs.google.com/spreadsheets/d/1XW55nKnnHtEEfp6tNDDQHI-XW_4aONsXMKBWI1s4OAA/edit?usp=drive_link"
-          )
-        }
+        style={styles.sheetButton}
+        onPress={() => Linking.openURL(PRACTICE_SHEET_URL)}
         accessibilityRole="link"
       >
-        <Text style={styles.link}>Ver histórico completo na planilha →</Text>
+        <Text style={styles.sheetButtonText}>Índice de Práticas (planilha) →</Text>
       </Pressable>
       {practiceLoading ? (
         <Text style={styles.helper}>Carregando…</Text>
@@ -341,12 +352,13 @@ function AdminDashboard({ user }: { user: User }) {
         </>
       )}
 
-      {/* Biblioteca: tudo que está publicado (e rascunhos) por categoria */}
-      <Text style={styles.sectionTitle}>Biblioteca</Text>
+      {/* Organizar Biblioteca: tudo que está publicado (e rascunhos) por categoria */}
+      <Text style={styles.sectionTitle}>Organizar Biblioteca</Text>
       <Text style={styles.helper}>
-        Tudo que está publicado (e rascunhos, marcados como "(rascunho)")
-        em cada uma das 4 páginas do app.
+        Escolha uma categoria para ver tudo que está publicado (e
+        rascunhos, marcados como "(rascunho)") nela.
       </Text>
+
       <View style={styles.categoryRow}>
         {CATEGORIES.map((c) => (
           <Pressable
@@ -367,53 +379,68 @@ function AdminDashboard({ user }: { user: User }) {
         ))}
       </View>
 
-      {!itemsLoading && items.length > 0 ? (
-        <Pressable
-          style={[styles.dangerButton, deletingAll && styles.buttonDisabled]}
-          onPress={removeAllInCategory}
-          disabled={deletingAll}
-          accessibilityRole="button"
-        >
-          <Text style={styles.dangerButtonText}>
-            {deletingAll
-              ? "Apagando…"
-              : confirmDeleteAll
-                ? `Confirmar: apagar ${items.length} itens de ${CATEGORY_LABEL[category]}?`
-                : `Apagar todos de ${CATEGORY_LABEL[category]} (${items.length})`}
-          </Text>
-        </Pressable>
-      ) : null}
+      <View style={styles.libraryCard}>
+        <View style={styles.libraryCardHeader}>
+          <Text style={styles.libraryCardTitle}>{CATEGORY_LABEL[category]}</Text>
+          <Pressable
+            style={styles.sheetButton}
+            onPress={() => Linking.openURL(CATEGORY_SHEET_URL[category])}
+            accessibilityRole="link"
+          >
+            <Text style={styles.sheetButtonText}>
+              Índice de {CATEGORY_LABEL[category]} (planilha) →
+            </Text>
+          </Pressable>
+        </View>
 
-      {itemsLoading ? (
-        <Text style={styles.helper}>Carregando…</Text>
-      ) : items.length === 0 ? (
-        <Text style={styles.helper}>Nenhum item cadastrado nesta categoria.</Text>
-      ) : (
-        items.map((item) => (
-          <View key={item.id} style={styles.itemRow}>
-            <View style={styles.itemTextColumn}>
-              <Text style={styles.itemTitle}>
-                {item.title} {item.published ? "" : "(rascunho)"}
-              </Text>
-              {item.description ? (
-                <Text style={styles.itemDescription}>{item.description}</Text>
-              ) : null}
-              <Text style={styles.itemMeta}>
-                {item.source === "streaming"
-                  ? STREAMING_PROVIDER_LABEL[item.streamingProvider ?? "other"]
-                  : item.fileType?.toUpperCase()}{" "}
-                · ordem {item.order}
-              </Text>
+        {!itemsLoading && items.length > 0 ? (
+          <Pressable
+            style={[styles.dangerButton, deletingAll && styles.buttonDisabled]}
+            onPress={removeAllInCategory}
+            disabled={deletingAll}
+            accessibilityRole="button"
+          >
+            <Text style={styles.dangerButtonText}>
+              {deletingAll
+                ? "Apagando…"
+                : confirmDeleteAll
+                  ? `Confirmar: apagar ${items.length} itens de ${CATEGORY_LABEL[category]}?`
+                  : `Apagar todos de ${CATEGORY_LABEL[category]} (${items.length})`}
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {itemsLoading ? (
+          <Text style={styles.helper}>Carregando…</Text>
+        ) : items.length === 0 ? (
+          <Text style={styles.helper}>Nenhum item cadastrado nesta categoria.</Text>
+        ) : (
+          items.map((item) => (
+            <View key={item.id} style={styles.itemRow}>
+              <View style={styles.itemTextColumn}>
+                <Text style={styles.itemTitle}>
+                  {item.title} {item.published ? "" : "(rascunho)"}
+                </Text>
+                {item.description ? (
+                  <Text style={styles.itemDescription}>{item.description}</Text>
+                ) : null}
+                <Text style={styles.itemMeta}>
+                  {item.source === "streaming"
+                    ? STREAMING_PROVIDER_LABEL[item.streamingProvider ?? "other"]
+                    : item.fileType?.toUpperCase()}{" "}
+                  · ordem {item.order}
+                </Text>
+              </View>
+              <Pressable onPress={() => startEdit(item)} accessibilityRole="button">
+                <Text style={styles.link}>Editar</Text>
+              </Pressable>
+              <Pressable onPress={() => removeItem(item.id)} accessibilityRole="button">
+                <Text style={styles.linkDanger}>Excluir</Text>
+              </Pressable>
             </View>
-            <Pressable onPress={() => startEdit(item)} accessibilityRole="button">
-              <Text style={styles.link}>Editar</Text>
-            </Pressable>
-            <Pressable onPress={() => removeItem(item.id)} accessibilityRole="button">
-              <Text style={styles.linkDanger}>Excluir</Text>
-            </Pressable>
-          </View>
-        ))
-      )}
+          ))
+        )}
+      </View>
 
       {/* Formulário de item */}
       <Text style={styles.sectionTitle}>
@@ -779,6 +806,39 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.primary,
     marginLeft: spacing.md,
+  },
+  sheetButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  sheetButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+  libraryCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  libraryCardHeader: {
+    marginBottom: spacing.sm,
+  },
+  libraryCardTitle: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 15,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   linkDanger: {
     fontFamily: fonts.bodyFallback,
