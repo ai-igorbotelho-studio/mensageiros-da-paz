@@ -22,7 +22,6 @@ import {
   watchAdminAuth,
   type ItemFormValues,
 } from "@/firebase/admin";
-import { seedInitialContent } from "@/firebase/seedContent";
 import { syncPracticeToSheet } from "@/integrations/practiceSheetSync";
 import type {
   ContentCategory,
@@ -171,29 +170,6 @@ function AdminDashboard({ user }: { user: User }) {
   const [form, setForm] = useState<ItemFormValues>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [seedRunning, setSeedRunning] = useState(false);
-  const [seedResult, setSeedResult] = useState<string | null>(null);
-
-  async function runSeed() {
-    setSeedRunning(true);
-    setSeedResult(null);
-    try {
-      const { created, failed } = await seedInitialContent(
-        user.email ?? "admin",
-        (done, total) => setSeedResult(`Importando… ${done}/${total}`)
-      );
-      setSeedResult(
-        failed > 0
-          ? `${created} itens importados, ${failed} falharam.`
-          : `${created} itens importados com sucesso.`
-      );
-      loadItems();
-    } catch {
-      setSeedResult("Falha ao importar. Tente novamente.");
-    } finally {
-      setSeedRunning(false);
-    }
-  }
 
   useEffect(() => {
     adminGetPracticeOfTheWeek()
@@ -295,29 +271,6 @@ function AdminDashboard({ user }: { user: User }) {
         </Pressable>
       </View>
       <Text style={styles.helper}>Logado como {user.email}</Text>
-
-      {/* Importação única do conteúdo inicial (8 orações, 18 livros, 1
-          música) — ver src/firebase/seedContent.ts. Roda só uma vez;
-          clicar de novo duplica os itens, então confira a lista antes. */}
-      <View style={styles.seedBox}>
-        <Text style={styles.sectionTitle}>Importar conteúdo inicial</Text>
-        <Text style={styles.helper}>
-          Cadastra de uma vez as 8 orações, os 18 livros e a música
-          "Guerreiro do Bem" já documentados. Clique só uma vez — clicar de
-          novo duplica os itens.
-        </Text>
-        <Pressable
-          style={[styles.primaryButton, seedRunning && styles.buttonDisabled]}
-          onPress={runSeed}
-          disabled={seedRunning}
-          accessibilityRole="button"
-        >
-          <Text style={styles.primaryButtonText}>
-            {seedRunning ? "Importando…" : "Importar conteúdo inicial"}
-          </Text>
-        </Pressable>
-        {seedResult ? <Text style={styles.helper}>{seedResult}</Text> : null}
-      </View>
 
       {/* Prática da Semana */}
       <Text style={styles.sectionTitle}>Prática da Semana</Text>
@@ -690,17 +643,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginTop: spacing.sm,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  seedBox: {
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-    gap: spacing.xs,
   },
   primaryButtonText: {
     fontFamily: fonts.bodyFallback,
