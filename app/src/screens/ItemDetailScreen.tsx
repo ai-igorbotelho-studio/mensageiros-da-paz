@@ -13,7 +13,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { ErrorState } from "@/components/ErrorState";
 import { SpotifyEmbed } from "@/components/SpotifyEmbed";
-import { BottomNavBar } from "@/components/BottomNavBar";
 import { DriveAudioEmbed } from "@/components/DriveAudioEmbed";
 import { PressableScale } from "@/components/PressableScale";
 import {
@@ -434,7 +433,6 @@ export function ItemDetailScreen({ route, navigation }: Props) {
         </View>
       ) : null}
       </ScrollView>
-      <BottomNavBar active={item.category} />
     </View>
   );
 }

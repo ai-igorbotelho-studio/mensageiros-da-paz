@@ -7,7 +7,6 @@ import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/EmptyState";
 import { ContentListItem } from "@/components/ContentListItem";
-import { BottomNavBar } from "@/components/BottomNavBar";
 import { FadeIn } from "@/components/FadeIn";
 import type { ContentCategory, ContentItem, RootStackParamList } from "@/types";
 
@@ -58,7 +57,6 @@ export function ContentListScreen({ route, navigation }: Props) {
             onRetry={load}
           />
         </View>
-        <BottomNavBar active={category} />
       </View>
     );
   }
@@ -68,7 +66,6 @@ export function ContentListScreen({ route, navigation }: Props) {
         <View style={styles.content}>
           <EmptyState message={EMPTY_MESSAGE[category]} />
         </View>
-        <BottomNavBar active={category} />
       </View>
     );
   }
@@ -95,7 +92,6 @@ export function ContentListScreen({ route, navigation }: Props) {
           )}
         />
       </FadeIn>
-      <BottomNavBar active={category} />
     </View>
   );
 }

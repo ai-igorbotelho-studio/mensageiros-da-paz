@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { Text } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, useNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize } from "@/theme/tokens";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -10,9 +10,28 @@ import { SettingsScreen } from "@/screens/SettingsScreen";
 import { AdminScreen } from "@/screens/AdminScreen";
 import { PressableScale } from "@/components/PressableScale";
 import { GearIcon } from "@/components/CategoryIcons";
-import type { RootStackParamList } from "@/types";
+import { BottomNavBar } from "@/components/BottomNavBar";
+import type { ContentCategory, RootStackParamList } from "@/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Nas telas onde a barra aparece, qual categoria (se alguma) ela marca
+// como ativa — usado pra manter a BottomNavBar persistente (ver comentário
+// em RootNavigator abaixo) sincronizada com a rota atual.
+function activeCategoryFor(
+  name: keyof RootStackParamList,
+  params: RootStackParamList[keyof RootStackParamList]
+): ContentCategory | undefined {
+  if (name === "ContentList") {
+    return (params as RootStackParamList["ContentList"] | undefined)?.category;
+  }
+  if (name === "ItemDetail") {
+    return (params as RootStackParamList["ItemDetail"] | undefined)?.item.category;
+  }
+  return undefined;
+}
+
+const SCREENS_WITHOUT_BAR = new Set<keyof RootStackParamList>(["Settings", "Admin"]);
 
 /**
  * Habilita `https://mensageiros-da-paz.pages.dev/admin` como endereço
@@ -42,8 +61,27 @@ const linking = {
  * native-stack, sem customização que quebre a convenção).
  */
 export function RootNavigator() {
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  // Começa escondida: em deep link direto pra /admin ou /configuracoes
+  // (linking), a rota real só é conhecida no onReady — começar com
+  // show:true piscaria a barra por um instante nessas telas antes de
+  // corrigir.
+  const [barState, setBarState] = useState<{ show: boolean; active?: ContentCategory }>({
+    show: false,
+  });
+
+  const syncBar = useCallback(() => {
+    const route = navigationRef.getCurrentRoute();
+    if (!route) return;
+    const name = route.name as keyof RootStackParamList;
+    setBarState({
+      show: !SCREENS_WITHOUT_BAR.has(name),
+      active: activeCategoryFor(name, route.params as never),
+    });
+  }, [navigationRef]);
+
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer ref={navigationRef} linking={linking} onReady={syncBar} onStateChange={syncBar}>
       <Stack.Navigator
         screenOptions={({ navigation }) => ({
           headerStyle: { backgroundColor: colors.background },
@@ -52,12 +90,15 @@ export function RootNavigator() {
           headerTitleAlign: "center",
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
-          // Cross-fade em vez do slide padrão — some com o "salto" seco
-          // entre páginas (2026-09-21, a pedido do Head). Duração um
-          // pouco mais longa que o padrão pra parecer fluida em vez de
-          // instantânea, sem ficar lenta.
-          animation: "fade",
-          animationDuration: 260,
+          // Slide horizontal (padrão iOS) em vez do crossfade anterior
+          // (2026-09-21, a pedido do Head — o fade "apagava tudo",
+          // BottomNavBar incluída, antes de reaparecer, sentido como uma
+          // transição quebrada/feia). Agora a barra é persistente (fora
+          // do Stack.Navigator, só o conteúdo desliza por baixo dela —
+          // ver BottomNavBar renderizada abaixo), então a transição lê
+          // como elegante e direcional, sem nada "sumindo".
+          animation: "slide_from_right",
+          animationDuration: 280,
           // Cabeçalho fixo "Mensageiros da Paz" em todas as páginas, a
           // pedido do Head (2026-09-21) — substitui os títulos por tela
           // usados antes (nome da subpágina/item). Também funciona como
@@ -113,6 +154,9 @@ export function RootNavigator() {
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Admin" component={AdminScreen} />
       </Stack.Navigator>
+      {barState.show ? (
+        <BottomNavBar active={barState.active} navigationRef={navigationRef} />
+      ) : null}
     </NavigationContainer>
   );
 }

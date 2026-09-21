@@ -5,7 +5,6 @@ import { colors, fonts, spacing } from "@/theme/tokens";
 import { fetchPracticeOfTheWeek } from "@/firebase/firestore";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
-import { BottomNavBar } from "@/components/BottomNavBar";
 import { DayInfoBar } from "@/components/DayInfoBar";
 import { FadeIn } from "@/components/FadeIn";
 
@@ -67,7 +66,6 @@ export function HomeScreen() {
           />
         </View>
         <DayInfoBar />
-        <BottomNavBar />
       </View>
     );
   }
@@ -85,7 +83,6 @@ export function HomeScreen() {
         <View style={styles.spacerArea} />
       </FadeIn>
       <DayInfoBar />
-      <BottomNavBar />
     </View>
   );
 }

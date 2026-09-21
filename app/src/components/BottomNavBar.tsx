@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { NavigationContainerRefWithCurrent } from "@react-navigation/native";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
 import { PressableScale } from "@/components/PressableScale";
@@ -23,6 +22,7 @@ const CIRCLE_SIZE = 58;
 interface Props {
   // categoria da página atual (ausente na Home, que não pertence a nenhuma)
   active?: ContentCategory;
+  navigationRef: NavigationContainerRefWithCurrent<RootStackParamList>;
 }
 
 /**
@@ -35,11 +35,16 @@ interface Props {
  * esse padrão de ícone ativo destacado + animação elástica ao trocar
  * de aba (Animated.spring com "bounciness" alto, dá um leve exagero
  * antes de assentar em vez de simplesmente aparecer).
+ *
+ * Renderizada UMA VEZ em `RootNavigator.tsx`, fora do `Stack.Navigator`
+ * — antes cada tela (Home/ContentList/ItemDetail) renderizava a sua
+ * própria BottomNavBar, então a barra fazia parte do conteúdo que se
+ * desmontava/refazia a cada transição de tela (crossfade "apagando e
+ * reaparecendo" a barra junto, relatado 2026-09-21). Persistente, ela
+ * recebe `navigationRef` em vez de usar `useNavigation()` — não está
+ * dentro de nenhum Navigator, só dentro do NavigationContainer.
  */
-export function BottomNavBar({ active }: Props) {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
+export function BottomNavBar({ active, navigationRef }: Props) {
   // A barra inteira dá um pequeno "pulso" elástico a cada troca de aba,
   // além do círculo do ícone ativo — reforça a sensação de mola em vez
   // de só o círculo se mexer sozinho (achado do Head, 2026-09-21).
@@ -74,7 +79,7 @@ export function BottomNavBar({ active }: Props) {
                 // lista (relatado 2026-09-21). Sempre navega: se já
                 // estiver na própria lista da categoria, o
                 // native-stack só mantém a tela, sem duplicar.
-                navigation.navigate("ContentList", {
+                navigationRef.navigate("ContentList", {
                   category: tab.category,
                   title: tab.label,
                 });
