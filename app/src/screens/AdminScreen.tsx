@@ -208,7 +208,19 @@ function AdminDashboard({ user }: { user: User }) {
   useEffect(() => {
     setConfirmDeleteAll(false);
     loadItems();
-  }, [loadItems]);
+    // A categoria escolhida na "Organizar Biblioteca" (topo) e a
+    // categoria do formulário "Novo item" (abaixo) eram estados
+    // independentes: trocar a aba de cima não sincronizava o formulário,
+    // então um item podia ser salvo na categoria antiga por engano
+    // (bug relatado 2026-09-21: música publicada como livro). Ao trocar
+    // de aba, sempre reabre o formulário limpo já na categoria certa —
+    // a menos que um item esteja sendo editado, para não perder o que
+    // está sendo alterado.
+    if (editingId === null) {
+      setForm({ ...EMPTY_FORM, category });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, loadItems]);
 
   async function savePractice() {
     setPracticeSaved(false);
