@@ -6,6 +6,7 @@ import { fetchPracticeOfTheWeek } from "@/firebase/firestore";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { BottomNavBar } from "@/components/BottomNavBar";
+import { DayInfoBar } from "@/components/DayInfoBar";
 import { FadeIn } from "@/components/FadeIn";
 
 const CACHE_KEY = "practice_of_the_week_cache";
@@ -65,6 +66,7 @@ export function HomeScreen() {
             onRetry={load}
           />
         </View>
+        <DayInfoBar />
         <BottomNavBar />
       </View>
     );
@@ -82,6 +84,7 @@ export function HomeScreen() {
         </View>
         <View style={styles.spacerArea} />
       </FadeIn>
+      <DayInfoBar />
       <BottomNavBar />
     </View>
   );
