@@ -812,6 +812,16 @@ function AdminDashboard({ user }: { user: User }) {
           </Pressable>
         ))}
       </View>
+      {activeTab === "guide" ? (
+        <PressableScale
+          style={styles.guideOpenNewTabLink}
+          onPress={() => Linking.openURL(ADMIN_GUIDE_URL)}
+          accessibilityRole="link"
+          accessibilityLabel="Abrir Guia do Admin em nova aba"
+        >
+          <Text style={styles.guideOpenNewTabLinkText}>Abrir em nova aba ↗</Text>
+        </PressableScale>
+      ) : null}
 
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         {activeTab === "practice" ? (
@@ -858,21 +868,7 @@ function AdminDashboard({ user }: { user: User }) {
           </View>
         ) : null}
 
-        {activeTab === "guide" ? (
-          <View style={styles.libraryCard}>
-            <View style={styles.libraryCardHeader}>
-              <Text style={styles.libraryCardTitle}>Guia do Admin</Text>
-              <Pressable
-                style={styles.sheetButton}
-                onPress={() => Linking.openURL(ADMIN_GUIDE_URL)}
-                accessibilityRole="link"
-              >
-                <Text style={styles.sheetButtonText}>Abrir em nova aba →</Text>
-              </Pressable>
-            </View>
-            <AdminGuideEmbed url={ADMIN_GUIDE_URL} />
-          </View>
-        ) : null}
+        {activeTab === "guide" ? <AdminGuideEmbed url={ADMIN_GUIDE_URL} /> : null}
 
         {activeTab === "library" ? (
           <>
@@ -1770,6 +1766,21 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: colors.surface,
+  },
+  // Link do Guia do Admin — vive na área de navegação (logo abaixo das
+  // abas), não dentro de mais um card com borda em cima do conteúdo
+  // embutido (achado do Head 2026-09-21: camadas demais).
+  guideOpenNewTabLink: {
+    alignSelf: "flex-end",
+    minHeight: minTouchSize - 12,
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+  },
+  guideOpenNewTabLinkText: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.primary,
   },
   sectionTitle: {
     fontFamily: fonts.bodyFallback,
