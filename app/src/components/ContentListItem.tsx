@@ -138,9 +138,14 @@ const styles = StyleSheet.create({
   },
   badge: {
     fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
     fontSize: 12,
-    color: colors.primary,
-    backgroundColor: colors.primaryLight,
+    // Antes: texto primary (roxo escuro) sobre fundo primaryLight (roxo
+    // médio) — contraste baixo demais, relatado ilegível 2026-09-21.
+    // Invertido pro mesmo padrão dos outros pills sólidos do app (fundo
+    // primary cheio, texto claro).
+    color: colors.surface,
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: 999,

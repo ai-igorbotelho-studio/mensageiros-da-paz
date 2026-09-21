@@ -558,9 +558,19 @@ function AdminDashboard({ user }: { user: User }) {
     setImportRunning(true);
     setImportResult(null);
     let created = 0;
+    let updated = 0;
     let skipped = 0;
     let failed = 0;
     let order = items.length + 1;
+    // Título (normalizado) -> item já existente na categoria — permite
+    // reimportar a mesma planilha sem duplicar itens. Isso é o que
+    // resolve, por exemplo, "adicionei a coluna de capa depois, os
+    // livros já importados não têm capa": reimportar a planilha de
+    // Livros agora ATUALIZA cada item existente com a capa, em vez de
+    // criar cópias duplicadas ao lado dos originais.
+    const existingByTitle = new Map(
+      items.map((item) => [item.title.trim().toLowerCase(), item])
+    );
     try {
       for (const rowIndex of importSelected) {
         const row = importRows[rowIndex];
@@ -581,6 +591,7 @@ function AdminDashboard({ user }: { user: User }) {
           : DEFAULT_IMPORT_FILE_TYPE[category];
         const rawOrder = valueForField(row, "order");
         const parsedOrder = Number(rawOrder);
+        const existing = existingByTitle.get(title.trim().toLowerCase());
 
         const values: ItemFormValues = {
           title,
@@ -593,24 +604,33 @@ function AdminDashboard({ user }: { user: User }) {
           coverImageUrl,
           streamingProvider: "spotify",
           streamingUrl: "",
-          order: Number.isFinite(parsedOrder) && rawOrder ? parsedOrder : order,
-          published: true,
+          order: Number.isFinite(parsedOrder) && rawOrder
+            ? parsedOrder
+            : existing
+              ? existing.order
+              : order,
+          published: existing ? existing.published : true,
         };
 
         try {
-          await adminCreateItem(values, user.email ?? "admin");
-          created++;
-          order++;
+          if (existing) {
+            await adminUpdateItem(existing.id, values);
+            updated++;
+          } else {
+            await adminCreateItem(values, user.email ?? "admin");
+            created++;
+            order++;
+          }
         } catch {
           failed++;
         }
       }
       setImportResult(
-        `${created} importado(s)${skipped ? `, ${skipped} sem título (ignorado(s))` : ""}${
+        `${created} criado(s), ${updated} atualizado(s)${skipped ? `, ${skipped} sem título (ignorado(s))` : ""}${
           failed ? `, ${failed} com erro` : ""
         }.`
       );
-      notify(`${created} item(ns) importado(s) para ${CATEGORY_LABEL[category]}.`);
+      notify(`${created} criado(s) e ${updated} atualizado(s) em ${CATEGORY_LABEL[category]}.`);
       loadItems();
       refreshCounts();
     } finally {
