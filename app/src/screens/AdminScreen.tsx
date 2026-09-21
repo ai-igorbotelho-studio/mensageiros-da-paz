@@ -27,7 +27,7 @@ import {
   type ItemFormValues,
 } from "@/firebase/admin";
 import { syncPracticeToSheet } from "@/integrations/practiceSheetSync";
-import { syncItemToSheet } from "@/integrations/contentSheetSync";
+import { syncItemDeleteToSheet, syncItemToSheet } from "@/integrations/contentSheetSync";
 import {
   guessFieldForHeader,
   IMPORT_FIELD_LABEL,
@@ -331,6 +331,9 @@ function AdminDashboard({ user }: { user: User }) {
   const [manualOpen, setManualOpen] = useState(false);
   const [form, setForm] = useState<ItemFormValues>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Título do item ANTES da edição — a planilha acha a linha certa
+  // procurando por este título (o do formulário pode ter mudado).
+  const [editingOriginalTitle, setEditingOriginalTitle] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
@@ -427,6 +430,7 @@ function AdminDashboard({ user }: { user: User }) {
 
   function startEdit(item: ContentItem) {
     setEditingId(item.id);
+    setEditingOriginalTitle(item.title);
     setForm({
       title: item.title,
       description: item.description ?? "",
@@ -472,15 +476,25 @@ function AdminDashboard({ user }: { user: User }) {
       if (editingId) {
         await adminUpdateItem(editingId, form);
         notify("Item atualizado.");
+        // Também sincroniza edição de item importado — a planilha
+        // acha a linha pelo título de antes da edição.
+        syncItemToSheet(
+          form.category,
+          form,
+          "update",
+          user.email ?? "admin",
+          editingOriginalTitle ?? form.title
+        );
       } else {
         await adminCreateItem(form, user.email ?? "admin");
         notify("Item adicionado.");
-        // Só na criação manual — item importado de planilha já veio de
-        // lá, sincronizar de volta seria redundante.
-        syncItemToSheet(form.category, form, user.email ?? "admin");
+        // Item de Publicação manual ainda não existe na planilha —
+        // sempre adiciona linha nova.
+        syncItemToSheet(form.category, form, "create", user.email ?? "admin");
       }
       setCategory(form.category);
       setEditingId(null);
+      setEditingOriginalTitle(null);
       setForm({ ...EMPTY_FORM, category: form.category });
       loadItems();
       refreshCounts();
@@ -496,9 +510,11 @@ function AdminDashboard({ user }: { user: User }) {
       setConfirmDeleteId(id);
       return;
     }
+    const item = items.find((i) => i.id === id);
     try {
       await adminDeleteItem(id);
       notify("Item excluído.");
+      if (item) syncItemDeleteToSheet(item.category, item.title, user.email ?? "admin");
       loadItems();
       refreshCounts();
     } catch {
@@ -548,8 +564,10 @@ function AdminDashboard({ user }: { user: User }) {
     }
     setDeletingAll(true);
     try {
-      for (const id of selectedIds) {
-        await adminDeleteItem(id);
+      const toDelete = sortedItems.filter((i) => selectedIds.has(i.id));
+      for (const item of toDelete) {
+        await adminDeleteItem(item.id);
+        syncItemDeleteToSheet(item.category, item.title, user.email ?? "admin");
       }
       notify(`${selectedIds.size} item(ns) apagado(s) de ${CATEGORY_LABEL[category]}.`);
       setSelectedIds(new Set());
