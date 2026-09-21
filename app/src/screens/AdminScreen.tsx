@@ -469,6 +469,14 @@ function AdminDashboard({ user }: { user: User }) {
               </Pressable>
             ))}
           </View>
+          {form.fileType === "audio" && form.fileUrl.includes("drive.google.com") ? (
+            <Text style={styles.fieldHint}>
+              Link do Google Drive detectado: o app converte automaticamente
+              para o formato de reprodução direta. Funciona bem pra arquivos
+              pequenos/médios; se o áudio não tocar, o mais confiável é
+              hospedar no Cloudflare Pages (pasta content-src do repositório).
+            </Text>
+          ) : null}
         </>
       ) : (
         <>

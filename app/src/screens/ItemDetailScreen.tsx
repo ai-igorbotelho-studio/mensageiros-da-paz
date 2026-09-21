@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { ErrorState } from "@/components/ErrorState";
 import { SpotifyEmbed } from "@/components/SpotifyEmbed";
+import { toDirectFileUrl } from "@/utils/driveUrl";
 import type { RootStackParamList, StreamingProvider } from "@/types";
 
 /** Extrai o id da faixa de uma URL do Spotify (open.spotify.com/track/{id} ou /embed/track/{id}). */
@@ -50,7 +51,7 @@ export function ItemDetailScreen({ route }: Props) {
     try {
       if (!sound) {
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: item.fileUrl },
+          { uri: toDirectFileUrl(item.fileUrl) },
           { shouldPlay: true, volume },
           setStatus
         );
@@ -125,7 +126,7 @@ export function ItemDetailScreen({ route }: Props) {
 
       {item.source === "upload" && item.fileType === "image" && item.fileUrl ? (
         <Image
-          source={{ uri: item.fileUrl }}
+          source={{ uri: toDirectFileUrl(item.fileUrl) }}
           style={styles.image}
           resizeMode="contain"
           accessibilityLabel={item.title}
