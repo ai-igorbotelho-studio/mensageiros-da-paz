@@ -27,6 +27,7 @@ import {
   type ItemFormValues,
 } from "@/firebase/admin";
 import { syncPracticeToSheet } from "@/integrations/practiceSheetSync";
+import { syncItemToSheet } from "@/integrations/contentSheetSync";
 import {
   guessFieldForHeader,
   IMPORT_FIELD_LABEL,
@@ -474,6 +475,9 @@ function AdminDashboard({ user }: { user: User }) {
       } else {
         await adminCreateItem(form, user.email ?? "admin");
         notify("Item adicionado.");
+        // Só na criação manual — item importado de planilha já veio de
+        // lá, sincronizar de volta seria redundante.
+        syncItemToSheet(form.category, form, user.email ?? "admin");
       }
       setCategory(form.category);
       setEditingId(null);
