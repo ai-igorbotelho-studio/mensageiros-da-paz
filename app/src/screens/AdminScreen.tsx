@@ -76,8 +76,14 @@ import type {
 // "Painel Administrativo" no topo reforça isso sem depender só da cor
 // de fundo. Paleta/marca (Mulberry, Sage, Lora/Lexend) continuam as
 // mesmas — só a composição muda.
-const ADMIN_BG = "#EFE8DD";
-const ADMIN_SURFACE = "#FBF7F1";
+// `ADMIN_BG`/`ADMIN_SURFACE` foram movidos pra `theme/tokens.ts`
+// (`colors.adminBackground`/`colors.adminSurface`) pelo
+// design-system-engineer (2026-09-21, `design/04-design-system-spec.md`
+// §3.3) — mesmos valores (#EFE8DD / #FBF7F1), sem mudança visual, só
+// elimina a duplicação de fonte da verdade. Aliases locais mantidos
+// para não tocar todo o arquivo de estilos abaixo.
+const ADMIN_BG = colors.adminBackground;
+const ADMIN_SURFACE = colors.adminSurface;
 
 const CATEGORIES: ContentCategory[] = ["oracoes", "musicas", "textos", "livros"];
 const CATEGORY_LABEL: Record<ContentCategory, string> = {
@@ -1798,7 +1804,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "700",
-    fontSize: 16,
+    // M1 (design/04 §1.4): 16 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textPrimary,
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
@@ -1820,17 +1827,20 @@ const styles = StyleSheet.create({
   },
   helper: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 14,
+    // M3 (design/04 §1.4): 14 -> 17, piso de minFontSize.
+    fontSize: 17,
+    lineHeight: 22,
     color: colors.textSecondary,
     marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
   fieldHint: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 12,
+    // M3 (design/04 §1.4): 12 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    lineHeight: 16,
+    lineHeight: 22,
   },
   input: {
     minHeight: minTouchSize,
@@ -1875,7 +1885,11 @@ const styles = StyleSheet.create({
     minHeight: minTouchSize,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.accent,
+    // M6 (design/04 §1.4): colors.accent (Sage, reservado a
+    // confirmação/estado publicado) -> colors.primary (Mulberry) —
+    // corrige inconsistência com `primaryButtonWide`, que já usava
+    // Mulberry corretamente.
+    backgroundColor: colors.primary,
     borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -1968,7 +1982,8 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "700",
-    fontSize: 16,
+    // M4 (design/04 §1.4): 16 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.surface,
   },
   secondaryButton: {
@@ -1986,7 +2001,8 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "600",
-    fontSize: 16,
+    // M4 (design/04 §1.4): 16 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textSecondary,
   },
   formButtonsRow: {
@@ -1995,7 +2011,8 @@ const styles = StyleSheet.create({
   },
   error: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 14,
+    // M3 (design/04 §1.4): 14 -> 17, piso de minFontSize.
+    fontSize: 17,
     // Mesmo bug do linkDanger: colors.accent é a cor de SUCESSO
     // (Sage), errada pra mensagem de erro.
     color: colors.danger,
@@ -2003,7 +2020,8 @@ const styles = StyleSheet.create({
   },
   success: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 14,
+    // M3 (design/04 §1.4): 14 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.success,
     marginTop: spacing.sm,
   },
@@ -2106,7 +2124,8 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 13,
+    // M5 (design/04 §1.4): 13 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textPrimary,
   },
   categoryChipTextActive: {
@@ -2209,7 +2228,8 @@ const styles = StyleSheet.create({
   overviewItemTitle: {
     flex: 1,
     fontFamily: fonts.bodyFallback,
-    fontSize: 13.5,
+    // M2 (design/04 §1.4): 13.5 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textPrimary,
   },
   overviewItemDraft: {
