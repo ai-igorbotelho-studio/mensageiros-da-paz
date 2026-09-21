@@ -33,8 +33,22 @@ interface Props {
   onPress: (item: ContentItem) => void;
 }
 
+// Alguns itens importados de planilha acabam com o título vazio (coluna
+// errada mapeada — ver AdminScreen.tsx). Sem isso, o card renderizava
+// completamente em branco: nada ilegível, literalmente sem texto
+// nenhum (relatado 2026-09-21 na categoria Textos). Cai pra descrição
+// ou pro início do texto, e só em último caso mostra um aviso — nunca
+// fica em branco.
+function displayTitle(item: ContentItem): string {
+  if (item.title.trim()) return item.title;
+  if (item.description?.trim()) return item.description;
+  if (item.text?.trim()) return item.text.trim().slice(0, 60);
+  return "(sem título — editar no admin)";
+}
+
 export function ContentListItem({ item, onPress }: Props) {
   const badge = badgeLabel(item);
+  const title = displayTitle(item);
   // Espaço de capa só existe pra Livros (2026-09-21, a pedido do Head):
   // as outras categorias não têm imagem própria por item, então o
   // layout de duas colunas ficaria vazio à toa nelas.
@@ -44,7 +58,7 @@ export function ContentListItem({ item, onPress }: Props) {
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={() => onPress(item)}
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}, ${badge}`}
+      accessibilityLabel={`${title}, ${badge}`}
     >
       {showCover ? (
         item.coverImageUrl ? (
@@ -61,7 +75,7 @@ export function ContentListItem({ item, onPress }: Props) {
         )
       ) : null}
       <View style={styles.textColumn}>
-        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.title}>{title}</Text>
         {item.description ? (
           <Text style={styles.description} numberOfLines={2}>
             {item.description}

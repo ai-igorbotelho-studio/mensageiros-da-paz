@@ -113,11 +113,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // Círculo preenchido com a cor de destaque (Sage) atrás do ícone da
-  // categoria atual — reforça qual página está ativa além da cor do
-  // texto/ícone (2026-09-21, a pedido do Head).
+  // Círculo atrás do ícone da categoria atual, reforçando qual página
+  // está ativa além da cor do texto/ícone. Chegou a usar a cor de
+  // destaque (Sage/verde), mas ficou "chamativo" demais sobre o roxo
+  // (2026-09-21, a pedido do Head) — um círculo claro (mesma família do
+  // fundo do app) chama menos atenção sozinho e ainda contrasta bem
+  // com a barra roxa.
   iconCircleActive: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.surface,
   },
   label: {
     fontFamily: fonts.bodyFallback,
