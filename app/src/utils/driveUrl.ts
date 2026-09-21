@@ -67,7 +67,23 @@ export function toGoogleDriveImageUrl(url: string): string {
   if (!url.includes("drive.google.com")) return url;
   const fileId = extractDriveFileId(url);
   if (!fileId) return url;
-  return `https://lh3.googleusercontent.com/d/${fileId}`;
+  // `=s0` (tamanho original) — sem sufixo de tamanho, esse domínio às
+  // vezes recusa a servir a imagem pra alguns arquivos.
+  return `https://lh3.googleusercontent.com/d/${fileId}=s0`;
+}
+
+/**
+ * Segunda tentativa, usada só se `toGoogleDriveImageUrl` falhar
+ * (`onError` do `<Image>`) — `export=view` funciona pra IMAGEM
+ * especificamente (diferente de áudio, onde causava o bug do
+ * download forçado). Mantido como fallback, não como padrão, porque
+ * `lh3.googleusercontent.com` é mais consistente na prática.
+ */
+export function toGoogleDriveImageFallbackUrl(url: string): string | null {
+  if (!url.includes("drive.google.com")) return null;
+  const fileId = extractDriveFileId(url);
+  if (!fileId) return null;
+  return `https://drive.google.com/uc?export=view&id=${fileId}`;
 }
 
 /**

@@ -19,6 +19,7 @@ import { DriveAudioEmbed } from "@/components/DriveAudioEmbed";
 import {
   toDirectFileUrl,
   toGoogleDocsTextExportUrl,
+  toGoogleDriveImageFallbackUrl,
   toGoogleDriveImageUrl,
   toGoogleDrivePreviewUrl,
 } from "@/utils/driveUrl";
@@ -64,6 +65,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
   const [gdocText, setGdocText] = useState<string | null>(null);
   const [gdocLoading, setGdocLoading] = useState(false);
   const [gdocError, setGdocError] = useState(false);
+  const [imageAttempt, setImageAttempt] = useState<0 | 1>(0);
 
   const isGdoc = item.source === "upload" && item.fileType === "gdoc" && !!item.fileUrl;
   // Áudio do Google Drive na web: expo-av tentando tocar direto (mesmo
@@ -235,7 +237,13 @@ export function ItemDetailScreen({ route, navigation }: Props) {
 
       {item.source === "upload" && item.fileType === "image" && item.fileUrl ? (
         <Image
-          source={{ uri: toGoogleDriveImageUrl(item.fileUrl) }}
+          source={{
+            uri:
+              imageAttempt === 0
+                ? toGoogleDriveImageUrl(item.fileUrl)
+                : toGoogleDriveImageFallbackUrl(item.fileUrl) ?? item.fileUrl,
+          }}
+          onError={() => setImageAttempt(1)}
           style={styles.image}
           resizeMode="contain"
           accessibilityLabel={item.title}

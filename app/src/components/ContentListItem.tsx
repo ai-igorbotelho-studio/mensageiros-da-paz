@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { BookIcon } from "@/components/CategoryIcons";
 import { PressableScale } from "@/components/PressableScale";
-import { toGoogleDriveImageUrl } from "@/utils/driveUrl";
+import { toGoogleDriveImageFallbackUrl, toGoogleDriveImageUrl } from "@/utils/driveUrl";
 import type { ContentItem, StreamingProvider } from "@/types";
 
 // Rótulos de ação (o que a pessoa vai FAZER ao tocar), não o formato
@@ -37,6 +37,36 @@ interface Props {
   onPress: (item: ContentItem) => void;
 }
 
+// Nenhum formato de URL do Drive funciona pra 100% dos arquivos (varia
+// por permissão/tipo/idade do link) — em vez de apostar num só e
+// deixar a capa em branco quando falha (relatado de novo 2026-09-21,
+// mesmo com o link certo na planilha), tenta um segundo formato antes
+// de desistir e cair no ícone de livro.
+function BookCover({ url, title }: { url: string; title: string }) {
+  const [attempt, setAttempt] = useState<0 | 1 | 2>(0);
+
+  if (attempt === 2) {
+    return (
+      <View style={styles.coverPlaceholder}>
+        <BookIcon size={22} color={colors.primaryLight} />
+      </View>
+    );
+  }
+
+  const src =
+    attempt === 0 ? toGoogleDriveImageUrl(url) : toGoogleDriveImageFallbackUrl(url) ?? url;
+
+  return (
+    <Image
+      source={{ uri: src }}
+      style={styles.cover}
+      resizeMode="cover"
+      accessibilityLabel={`Capa de ${title}`}
+      onError={() => setAttempt((a) => ((a + 1) as 0 | 1 | 2))}
+    />
+  );
+}
+
 // Alguns itens importados de planilha acabam com o título vazio (coluna
 // errada mapeada — ver AdminScreen.tsx). Sem isso, o card renderizava
 // completamente em branco: nada ilegível, literalmente sem texto
@@ -66,12 +96,7 @@ export function ContentListItem({ item, onPress }: Props) {
     >
       {showCover ? (
         item.coverImageUrl ? (
-          <Image
-            source={{ uri: toGoogleDriveImageUrl(item.coverImageUrl) }}
-            style={styles.cover}
-            resizeMode="cover"
-            accessibilityLabel={`Capa de ${item.title}`}
-          />
+          <BookCover url={item.coverImageUrl} title={item.title} />
         ) : (
           <View style={styles.coverPlaceholder}>
             <BookIcon size={22} color={colors.primaryLight} />

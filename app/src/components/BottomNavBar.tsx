@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Platform, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+import { colors, fonts, minTouchSize, spacing } from "@/theme/tokens";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
 import { PressableScale } from "@/components/PressableScale";
 import type { ContentCategory, RootStackParamList } from "@/types";
@@ -18,7 +18,7 @@ const TABS: Array<{
   { label: "Textos", category: "textos", Icon: TextIcon },
 ];
 
-const DIAMOND_SIZE = 40;
+const CIRCLE_SIZE = 40;
 
 interface Props {
   // categoria da página atual (ausente na Home, que não pertence a nenhuma)
@@ -28,10 +28,10 @@ interface Props {
 /**
  * Barra de navegação flutuante, fixa na mesma posição em TODAS as
  * páginas — inclusive a Home. Sempre centralizada horizontalmente com
- * largura própria (não estica de ponta a ponta em telas largas). A
- * categoria ativa "salta" pra fora da barra num losango destacado
- * (2026-09-21, a pedido do Head, a partir de uma referência visual) —
- * mais sofisticado que só trocar a cor do ícone.
+ * largura própria (não estica de ponta a ponta em telas largas). Sem
+ * sombra (2026-09-21, a pedido do Head — chegou a ter losango com
+ * sombra numa versão anterior; achatado de propósito agora). A
+ * categoria ativa "salta" pra fora da barra num círculo destacado.
  */
 export function BottomNavBar({ active }: Props) {
   const navigation =
@@ -82,8 +82,8 @@ function NavTab({ label, Icon, isActive, onPress }: NavTabProps) {
     }).start();
   }, [isActive, pop]);
 
-  const diamondScale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
-  const diamondTranslate = pop.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+  const circleScale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
+  const circleTranslate = pop.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
 
   return (
     <PressableScale
@@ -95,21 +95,15 @@ function NavTab({ label, Icon, isActive, onPress }: NavTabProps) {
     >
       <Animated.View
         style={[
-          styles.diamond,
+          styles.circle,
           {
             opacity: pop,
-            transform: [
-              { translateY: diamondTranslate },
-              { scale: diamondScale },
-              { rotate: "45deg" },
-            ],
+            transform: [{ translateY: circleTranslate }, { scale: circleScale }],
           },
         ]}
         pointerEvents="none"
       >
-        <View style={styles.diamondIconWrap}>
-          <Icon size={18} color={colors.surface} />
-        </View>
+        <Icon size={18} color={colors.surface} />
       </Animated.View>
 
       {!isActive ? <Icon size={20} color={colors.inverseMuted} /> : <View style={styles.iconSpacer} />}
@@ -136,16 +130,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.xs,
-    ...Platform.select({
-      web: { boxShadow: "0 8px 24px rgba(0,0,0,0.22)" },
-      default: {
-        shadowColor: "#000",
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 6,
-      },
-    }),
   },
   tab: {
     flex: 1,
@@ -154,37 +138,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 2,
   },
-  // Losango que "salta" pra fora da barra sobre a categoria ativa — o
-  // ícone dentro dele gira -45° pra compensar a rotação do losango e
-  // ficar em pé.
-  diamond: {
+  // Círculo que "salta" pra fora da barra sobre a categoria ativa.
+  circle: {
     position: "absolute",
-    top: -(DIAMOND_SIZE / 2 + 14),
+    top: -(CIRCLE_SIZE / 2 + 14),
     left: "50%",
-    marginLeft: -DIAMOND_SIZE / 2,
-    width: DIAMOND_SIZE,
-    height: DIAMOND_SIZE,
-    borderRadius: radii.sm,
+    marginLeft: -CIRCLE_SIZE / 2,
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+    borderRadius: CIRCLE_SIZE / 2,
     backgroundColor: colors.primary,
     borderWidth: 3,
     borderColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
-    ...Platform.select({
-      web: { boxShadow: "0 4px 10px rgba(0,0,0,0.25)" },
-      default: {
-        shadowColor: "#000",
-        shadowOpacity: 0.25,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 8,
-      },
-    }),
   },
-  diamondIconWrap: {
-    transform: [{ rotate: "-45deg" }],
-  },
-  // Reserva o espaço do ícone normal quando ele "sobe" pro losango, pra
+  // Reserva o espaço do ícone normal quando ele "sobe" pro círculo, pra
   // não deslocar o rótulo abaixo.
   iconSpacer: {
     width: 20,
