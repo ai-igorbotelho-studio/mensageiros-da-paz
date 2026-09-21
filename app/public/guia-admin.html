@@ -1,0 +1,1559 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Guia do Admin</title>
+<style>
+  :root {
+    --bg: #FFEDDF;
+    --surface: #FFF6EF;
+    --surface-2: #FBE4D2;
+    --text: #00170C;
+    --text-secondary: #6B4463;
+    --primary: #803C7A;
+    --primary-light: #AF65A8;
+    --accent: #3BCFA9;
+    --warn-color: #B3781E;
+    --warn-bg: #F6E2C3;
+    --border: #E9CDB6;
+    --code-bg: #F3E3D3;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #00170C;
+      --surface: #122A1F;
+      --surface-2: #163325;
+      --text: #FFEDDF;
+      --text-secondary: #E3B8B6;
+      --primary: #C77FC0;
+      --primary-light: #AF65A8;
+      --accent: #3BCFA9;
+      --warn-color: #E8B86D;
+      --warn-bg: #2E2410;
+      --border: #234233;
+      --code-bg: #0D2117;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #00170C;
+    --surface: #122A1F;
+    --surface-2: #163325;
+    --text: #FFEDDF;
+    --text-secondary: #E3B8B6;
+    --primary: #C77FC0;
+    --primary-light: #AF65A8;
+    --accent: #3BCFA9;
+    --warn-color: #E8B86D;
+    --warn-bg: #2E2410;
+    --border: #234233;
+    --code-bg: #0D2117;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Lexend", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding-inline: 20px;
+    padding-block: 0 48px;
+  }
+
+  h1, h2, h3 {
+    font-family: "Bodoni Moda", Georgia, serif;
+    text-wrap: balance;
+    color: var(--text);
+    margin: 0;
+  }
+
+  a { color: var(--primary); }
+
+  .shell { max-width: 1040px; margin: 0 auto; }
+
+  /* --- Header --- */
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-block: 40px 20px;
+    gap: 14px;
+  }
+  .hero img { width: 72px; height: auto; }
+  .hero h1 { font-size: clamp(26px, 5vw, 36px); font-weight: 700; }
+  .hero p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 15px;
+    max-width: 46ch;
+  }
+
+  /* --- Busca --- */
+  .search-wrap { max-width: 480px; margin: 0 auto 12px; position: relative; }
+  .search-wrap input {
+    width: 100%;
+    font-family: "Lexend", system-ui, sans-serif;
+    font-size: 14.5px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--primary-light);
+    border-radius: 999px;
+    padding: 11px 16px 11px 38px;
+  }
+  .search-wrap input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .search-wrap::before {
+    content: "🔍";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    opacity: 0.6;
+  }
+  .search-hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 14px;
+  }
+  [data-dim="true"] { opacity: 0.28; filter: saturate(0.4); }
+  [data-hit="true"] { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 14px; }
+
+  /* --- Controles globais: expandir/recolher tudo --- */
+  .global-controls {
+    max-width: 480px;
+    margin: 0 auto 22px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "Lexend", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--surface);
+    border: 1px solid var(--primary-light);
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn .ico { font-size: 11px; line-height: 1; }
+
+  /* --- Layout com sumário lateral (desktop) --- */
+  .layout { display: block; }
+  @media (min-width: 980px) {
+    .layout {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 720px);
+      gap: 40px;
+      align-items: start;
+    }
+    .layout .content { grid-column: 2; }
+    .layout .sidenav { grid-column: 1; }
+  }
+
+  /* --- Nav: pills horizontais (mobile) + sumário lateral (desktop) --- */
+  nav.toc {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    background: var(--bg);
+    padding-block: 10px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+  }
+  nav.toc a {
+    flex: none;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--surface);
+    border: 1px solid var(--primary-light);
+    border-radius: 999px;
+    padding: 8px 16px;
+    white-space: nowrap;
+  }
+  @media (min-width: 980px) { nav.toc { display: none; } }
+
+  .sidenav { display: none; }
+  @media (min-width: 980px) {
+    .sidenav {
+      display: block;
+      position: sticky;
+      top: 24px;
+    }
+    .sidenav ul { list-style: none; margin: 0; padding: 0; }
+    .sidenav > ul > li { margin-bottom: 4px; }
+    .sidenav a {
+      display: block;
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 7px 10px;
+      border-radius: 10px;
+    }
+    .sidenav a:hover { background: var(--surface); color: var(--primary); }
+    .sidenav ul ul { margin-left: 10px; border-left: 1px solid var(--border); }
+    .sidenav ul ul a { font-size: 12.5px; font-weight: 500; padding: 5px 10px; }
+  }
+
+  /* --- Section shell --- */
+  section { padding-block: 32px; border-top: 1px solid var(--border); }
+  section:first-of-type { border-top: none; padding-top: 0; }
+
+  .eyebrow {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--code-bg);
+    border-radius: 999px;
+    padding: 4px 12px;
+    margin-bottom: 10px;
+  }
+
+  section h2 { font-size: clamp(21px, 4.5vw, 26px); margin-bottom: 6px; }
+  section > p.lead {
+    color: var(--text-secondary);
+    margin: 8px 0 20px;
+    max-width: 60ch;
+  }
+
+  /* --- Toda seção clicável (expandir/recolher) --- */
+  summary { cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::marker { display: none; content: ""; }
+
+  .section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--primary-light);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-family: "Lexend", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 13.5px;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+  .section-toggle:hover { background: var(--surface-2); }
+  .section-toggle .arrow {
+    display: inline-block;
+    transition: transform 0.18s ease;
+    font-size: 12px;
+    flex: none;
+  }
+  details[open] > summary.section-toggle .arrow { transform: rotate(90deg); }
+  .section-body { padding-top: 16px; }
+
+  /* --- ref-card: componente único que substitui card/crud-card/tech-card --- */
+  .ref-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .ref-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 18px;
+  }
+  .ref-card > .answer {
+    font-family: "Lexend", system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ref-card > .answer .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent); flex: none;
+  }
+  .ref-card p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+  .ref-card code {
+    background: var(--code-bg);
+    color: var(--text);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-family: ui-monospace, "DM Mono", monospace;
+    font-size: 12.5px;
+  }
+  .ref-card details { margin-top: 8px; }
+  .ref-card summary.mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+  .ref-card summary.mini .arrow { font-size: 10px; transition: transform 0.18s ease; }
+  .ref-card details[open] summary.mini .arrow { transform: rotate(90deg); }
+  .ref-card details p { margin-top: 6px; }
+
+  .ref-card--link {
+    display: block;
+    text-decoration: none;
+  }
+  .ref-card--link:hover { border-color: var(--primary-light); }
+  .ref-card--link .answer { justify-content: space-between; }
+  .ref-card--link .go {
+    flex: none;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--bg);
+    background: var(--primary);
+    border-radius: 999px;
+    padding: 4px 11px;
+  }
+  .ref-card--link ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-secondary); font-size: 13px; }
+  .ref-card--link li { margin-bottom: 3px; }
+
+  /* status badges: reaproveitados pra confiabilidade de link e pra estados */
+  .tag-status {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border-radius: 999px;
+    padding: 3px 10px;
+    margin-bottom: 8px;
+  }
+  .tag-status.ok { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); color: var(--text); }
+  .tag-status.warn { background: var(--warn-bg); color: var(--warn-color); }
+
+  /* --- kv-table: colunas de planilha, dado tabular escaneável --- */
+  .kv-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    font-size: 13.5px;
+    margin-bottom: 14px;
+  }
+  .kv-table caption {
+    text-align: left;
+    font-family: "Bodoni Moda", Georgia, serif;
+    font-size: 17px;
+    padding: 12px 16px 8px;
+    color: var(--text);
+  }
+  .kv-table th, .kv-table td {
+    text-align: left;
+    padding: 9px 16px;
+    border-top: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .kv-table th {
+    width: 32%;
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .kv-table td { color: var(--text-secondary); }
+
+  /* --- Steps --- */
+  ol.steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: step;
+  }
+  ol.steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 38px;
+    padding-block: 10px 18px;
+    border-left: 2px solid var(--border);
+    margin-left: 13px;
+  }
+  ol.steps li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: -14px;
+    top: 8px;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--bg);
+    font-size: 12.5px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol.steps strong { display: block; margin-bottom: 3px; }
+  ol.steps p { margin: 0; color: var(--text-secondary); font-size: 14.5px; }
+
+  .warn {
+    background: var(--code-bg);
+    border-left: 3px solid var(--primary);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 14px;
+  }
+  .warn strong { color: var(--text); }
+
+  .status-box {
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .status-ok {
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    border: 1px solid var(--accent);
+  }
+  .status-ok strong { display: block; color: var(--text); margin-bottom: 4px; }
+  .status-box p { margin: 0; color: var(--text-secondary); }
+
+  .subhead {
+    font-family: "Lexend", system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 14px;
+  }
+
+  ol.steps pre {
+    background: var(--code-bg);
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 8px 0 0;
+  }
+  ol.steps pre code {
+    font-family: ui-monospace, "DM Mono", monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre;
+  }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+  .chip {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--surface-2);
+    border: 1px solid var(--primary-light);
+    border-radius: 999px;
+    padding: 5px 12px;
+  }
+  .chip.active { background: var(--primary); color: var(--bg); border-color: var(--primary); }
+
+  .pill-link {
+    display: inline-block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--surface);
+    border: 1px solid var(--primary-light);
+    border-radius: 999px;
+    padding: 6px 14px;
+    text-decoration: none;
+    margin: 4px 8px 4px 0;
+  }
+
+  footer {
+    text-align: center;
+    padding-top: 32px;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  /* --- Identidade: paleta de cor + tipografia --- */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .swatch {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .swatch-color {
+    height: 64px;
+  }
+  .swatch-info { padding: 10px 14px 14px; }
+  .swatch-name {
+    font-family: "Lexend", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 13.5px;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .swatch-role {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  .swatch-codes code {
+    display: block;
+    background: var(--code-bg);
+    color: var(--text);
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-family: ui-monospace, "DM Mono", monospace;
+    font-size: 11.5px;
+    margin-bottom: 4px;
+    width: fit-content;
+  }
+
+  .type-sample {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    padding: 18px 20px;
+    margin-bottom: 12px;
+  }
+  .type-sample .label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .type-sample .name {
+    font-family: "Lexend", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--primary);
+  }
+  .type-sample .meta {
+    font-family: ui-monospace, "DM Mono", monospace;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+  }
+  .type-sample .preview-display {
+    font-family: "Lora", Georgia, serif;
+  }
+  .type-sample .preview-body {
+    font-family: "Lexend", system-ui, sans-serif;
+  }
+  .type-sample .preview-mono {
+    font-family: ui-monospace, "DM Mono", monospace;
+  }
+
+  .usage-list {
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+  }
+  .usage-list li {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+  .usage-list li strong { color: var(--text); }
+  .usage-list li.dont {
+    border-color: var(--warn-color);
+    background: var(--warn-bg);
+  }
+  .usage-list li.dont strong { color: var(--warn-color); }
+
+  /* --- Alternar visualização da paleta: grade ou faixa combinada --- */
+  .view-toggle {
+    display: inline-flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    background: var(--code-bg);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .view-toggle button {
+    font-family: "Lexend", system-ui, sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .view-toggle button[aria-pressed="true"] {
+    color: var(--bg);
+    background: var(--primary);
+  }
+  .palette-view[data-mode="grid"] .palette-band-wrap { display: none; }
+  .palette-view[data-mode="band"] .swatch-grid { display: none; }
+
+  .palette-band {
+    display: flex;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    height: 88px;
+    margin-bottom: 8px;
+  }
+  .palette-band .seg {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+  }
+  .palette-band .seg .seg-label {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    right: 8px;
+    font-family: ui-monospace, "DM Mono", monospace;
+    font-size: 10.5px;
+    line-height: 1.35;
+    color: #fff;
+    mix-blend-mode: difference;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .palette-band-wrap { margin-bottom: 20px; }
+  .palette-band-wrap p.subhead { margin-bottom: 8px; }
+
+  /* --- Botões de exportação --- */
+  .export-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 4px;
+  }
+  .export-row button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "Lexend", system-ui, sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--surface);
+    border: 1px solid var(--primary-light);
+    border-radius: 999px;
+    padding: 8px 15px;
+    cursor: pointer;
+  }
+  .export-row button:hover { background: var(--surface-2); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .export-row button .ico { font-size: 12px; }
+
+  /* --- Hierarquia e dinamismo: hover/foco/elevação em toda a página --- */
+  .btn, .export-row button, .pill-link, .chip {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  .btn:hover, .export-row button:hover {
+    transform: translateY(-1px);
+  }
+  .pill-link:hover {
+    background: var(--surface-2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .section-toggle {
+    border-left: 3px solid var(--primary);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  .section-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+  }
+
+  .ref-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .ref-grid .ref-card:nth-child(even) { background: var(--surface-2); }
+  .ref-card--link {
+    border-left: 3px solid var(--accent);
+  }
+  .ref-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.09);
+    border-color: var(--primary-light);
+  }
+  .ref-card--link:hover .go {
+    transform: translateX(2px);
+  }
+  .ref-card--link .go {
+    transition: transform 0.15s ease;
+  }
+
+  .swatch, .type-sample {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .swatch:hover, .type-sample:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.09);
+  }
+
+  .kv-table { box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+  .kv-table caption { border-left: 3px solid var(--primary); padding-left: 13px; }
+  .kv-table tbody tr:nth-child(even) td,
+  .kv-table tbody tr:nth-child(even) th { background: var(--surface-2); }
+  .kv-table tbody tr { transition: background 0.15s ease; }
+  .kv-table tbody tr:hover td,
+  .kv-table tbody tr:hover th { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+
+  .usage-list li {
+    border-left: 3px solid var(--primary-light);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .usage-list li.dont { border-left-color: var(--warn-color); }
+  .usage-list li:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+  }
+
+  nav.toc a, .sidenav a {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  nav.toc a:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  /* Foco visível de teclado — todo elemento interativo */
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible,
+  .btn:focus-visible, .pill-link:focus-visible, .chip:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>
+
+<div class="shell">
+  <div class="hero">
+    <img src="chama-tripla.png" alt="Emblema Chama Tripla" />
+    <h1>Guia do Admin</h1>
+    <p>Referência rápida do painel do Mensageiros da Paz — use a busca abaixo pra achar uma resposta específica, ou o sumário pra navegar por seção. Cada seção abre/fecha no toque.</p>
+  </div>
+
+  <div class="search-wrap">
+    <input id="guideSearch" type="search" placeholder="Buscar (ex.: capa, link, planilha, áudio)…" autocomplete="off" />
+  </div>
+  <p class="search-hint" id="searchHint"></p>
+
+  <div class="global-controls">
+    <button type="button" class="btn" id="expandAllBtn"><span class="ico">▾</span> Expandir tudo</button>
+    <button type="button" class="btn" id="collapseAllBtn"><span class="ico">▸</span> Recolher tudo</button>
+  </div>
+
+  <nav class="toc">
+    <a href="#admin">O painel</a>
+    <a href="#usuarios">Usuários</a>
+    <a href="#pratica">Prática da Semana</a>
+    <a href="#biblioteca">Biblioteca</a>
+    <a href="#planilhas">Planilhas</a>
+    <a href="#confiabilidade">Confiabilidade</a>
+    <a href="#tecnologia">Tecnologia</a>
+    <a href="#identidade">Identidade visual</a>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidenav">
+      <ul>
+        <li><a href="#admin">O painel</a></li>
+        <li><a href="#usuarios">Usuários</a></li>
+        <li><a href="#pratica">Prática da Semana</a></li>
+        <li>
+          <a href="#biblioteca">Biblioteca</a>
+          <ul>
+            <li><a href="#planilhas">Planilhas por categoria</a></li>
+            <li><a href="#confiabilidade">Confiabilidade de links</a></li>
+          </ul>
+        </li>
+        <li><a href="#tecnologia">Tecnologia</a></li>
+        <li><a href="#identidade">Identidade visual</a></li>
+      </ul>
+    </aside>
+
+    <div class="content">
+
+  <section id="admin" data-searchable>
+    <span class="eyebrow">Admin</span>
+    <h2>Tudo que você pode fazer</h2>
+    <p class="lead">O painel fica em <code>/admin</code> do site — <a href="https://mensageiros-da-paz.pages.dev/admin" target="_blank" rel="noopener">mensageiros-da-paz.pages.dev/admin</a>. Só entra quem tem e-mail e senha cadastrados (ver seção Usuários).</p>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Ver o que dá pra fazer nesta aba</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <p class="lead" style="margin-top:0">Depois de logar, o painel tem só <strong>duas abas</strong> no topo: <strong>Prática da Semana</strong> e <strong>Biblioteca</strong>. Não existe mais uma aba separada de "Novo item" — cadastrar e editar conteúdo agora acontece dentro da própria Biblioteca, na categoria certa.</p>
+
+        <div class="ref-grid">
+          <div class="ref-card">
+            <div class="answer"><span class="dot"></span>Editar a Prática da Semana</div>
+            <p>Campo de texto único, mostrado na Home do app pra todo mundo. Escreve, salva, atualiza na hora — sem deploy novo.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer"><span class="dot"></span>Organizar a Biblioteca por categoria</div>
+            <p>Orações, Músicas, Textos e Livros são a mesma coisa por trás — um "item" com título, descrição, categoria e link. Cada categoria mostra quantos itens tem.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer"><span class="dot"></span>Importar direto de uma planilha</div>
+            <p>Cada categoria tem sua planilha-índice. "Importar da planilha" lê, deixa conferir o mapeamento de colunas e escolher as linhas — sem digitar um por um.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer"><span class="dot"></span>Publicar ou arquivar sem apagar</div>
+            <p>Interruptor "Publicado" em todo item. Desligado = some do app mas continua salvo (arquivado). Ligado = aparece pra todo mundo.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer"><span class="dot"></span>Editar, reordenar e excluir</div>
+            <p>Toque num item pra expandir: Editar, Excluir (com confirmação) e setas ↑ ↓ pra reordenar sem digitar número.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer"><span class="dot"></span>Feedback de cada ação</div>
+            <p>Toda ação mostra um aviso colorido no topo — verde pra sucesso, vermelho pra erro.</p>
+          </div>
+        </div>
+
+        <div class="warn"><strong>O que o painel não faz:</strong> não tem upload de arquivo (arrastar e soltar). Você cola um link — Google Drive, Cloudflare, Spotify, etc.</div>
+        <div class="warn"><strong>Painel parecendo "desatualizado"?</strong> Ctrl+Shift+R (Cmd+Shift+R no Mac) antes de reportar como bug — o site não guarda mais a página em cache, mas o navegador pode ter uma aba antiga aberta.</div>
+      </div>
+    </details>
+  </section>
+
+  <section id="usuarios" data-searchable>
+    <span class="eyebrow">Usuários</span>
+    <h2>Como criar um novo admin</h2>
+    <p class="lead">Não existe cadastro pelo próprio app — cada pessoa que pode entrar em <code>/admin</code> precisa ser criada manualmente no Firebase.</p>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Ver o passo a passo</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <ol class="steps">
+          <li>
+            <strong>Abra o Firebase Console</strong>
+            <p>Vá em <a href="https://console.firebase.google.com/project/mensageiros-da-paz/authentication/users" target="_blank" rel="noopener">console.firebase.google.com → Authentication → Users</a>.</p>
+          </li>
+          <li>
+            <strong>Clique em "Add user"</strong>
+            <p>Preencha e-mail e uma senha (mínimo 6 caracteres). Anote em lugar seguro — não tem "esqueci minha senha" configurado ainda.</p>
+          </li>
+          <li>
+            <strong>Pronto — já pode logar</strong>
+            <p>A pessoa acessa <code>/admin</code> com esse e-mail e senha na hora. Não precisa mexer em código nem esperar deploy.</p>
+          </li>
+          <li>
+            <strong>Pra remover acesso de alguém</strong>
+            <p>Mesma tela do Firebase — clique nos três pontinhos ao lado do usuário → Delete account.</p>
+          </li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <section id="pratica" data-searchable>
+    <span class="eyebrow">Aba 1</span>
+    <h2>Prática da Semana</h2>
+    <p class="lead">Não é uma lista de itens — é um texto único, sempre visível na Home. "Adicionar"/"excluir"/"arquivar" funcionam diferente aqui.</p>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Ver como funciona</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <div class="ref-grid">
+          <div class="ref-card">
+            <div class="answer">Adicionar = editar e salvar</div>
+            <p>Só existe UMA prática ativa por vez. "Adicionar" a próxima semana é sobrescrever o campo atual.</p>
+            <details><summary class="mini"><span class="arrow">▸</span> por que</summary><p>A anterior não se perde — vira uma linha na planilha automaticamente antes de ser sobrescrita.</p></details>
+          </div>
+          <div class="ref-card">
+            <div class="answer">Excluir = esvaziar o campo</div>
+            <p>Não tem botão de excluir separado. Apague o texto e clique Salvar — a Home mostra "Nenhuma prática publicada".</p>
+            <details><summary class="mini"><span class="arrow">▸</span> por que</summary><p>Linhas antigas na planilha não são apagadas — ficam como histórico permanente.</p></details>
+          </div>
+          <div class="ref-card">
+            <div class="answer">Arquivar não existe aqui</div>
+            <p>Diferente dos itens da Biblioteca (que têm interruptor "Publicado"), a Prática não tem — só existe uma versão ativa.</p>
+            <details><summary class="mini"><span class="arrow">▸</span> por que</summary><p>A anterior já "arquiva" sozinha na planilha ao ser substituída; consulte qualquer linha do histórico lá.</p></details>
+          </div>
+          <div class="ref-card">
+            <div class="answer">Inspiração é opcional</div>
+            <p>Campo extra só pro registro interno/planilha — nunca aparece no app.</p>
+          </div>
+        </div>
+
+        <a class="ref-card ref-card--link" href="https://docs.google.com/spreadsheets/d/1XW55nKnnHtEEfp6tNDDQHI-XW_4aONsXMKBWI1s4OAA/edit?usp=sharing" target="_blank" rel="noopener">
+          <div class="answer">Índice de Práticas <span class="go">Abrir →</span></div>
+          <p>Histórico de todas as práticas já publicadas — o Firestore guarda só a atual, a planilha guarda todas.</p>
+          <ul>
+            <li>Colunas: Prática da semana · Inspiração · Data · Quem publicou</li>
+            <li>Linha nova adicionada automaticamente a cada Salvar</li>
+          </ul>
+        </a>
+
+        <div class="status-box status-ok">
+          <strong>Status: já configurado ✓</strong>
+          <p>O script de sincronização já foi implantado e a URL já está no Cloudflare Pages (<code>EXPO_PUBLIC_PRACTICE_SHEET_WEBHOOK_URL</code>). Não precisa refazer nada — referência abaixo se algo quebrar.</p>
+        </div>
+
+        <details>
+          <summary class="mini" style="font-size:14px"><span class="arrow">▸</span> Como foi configurado (referência técnica)</summary>
+          <ol class="steps" style="margin-top:14px">
+            <li>
+              <strong>Script colado na planilha</strong>
+              <p>Extensões → Apps Script, com este código:</p>
+              <pre><code>function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var body = JSON.parse(e.postData.contents);
+  sheet.appendRow([
+    body.practiceText || "",
+    body.inspiration || "",
+    body.date ? new Date(body.date) : new Date(),
+    body.publishedBy || "",
+  ]);
+  return ContentService.createTextOutput(
+    JSON.stringify({ ok: true })
+  ).setMimeType(ContentService.MimeType.JSON);
+}</code></pre>
+            </li>
+            <li>
+              <strong>Implantado como App da Web</strong>
+              <p>Implantar → Nova implantação → App da Web. Executar como: Eu · Quem pode acessar: Qualquer pessoa.</p>
+            </li>
+            <li>
+              <strong>URL cadastrada no Cloudflare Pages</strong>
+              <p>Settings → Environment variables → <code>EXPO_PUBLIC_PRACTICE_SHEET_WEBHOOK_URL</code> = a URL do deploy (termina em <code>/exec</code>).</p>
+            </li>
+          </ol>
+        </details>
+      </div>
+    </details>
+  </section>
+
+  <section id="biblioteca" data-searchable>
+    <span class="eyebrow">Aba 2</span>
+    <h2>Biblioteca — Orações, Músicas, Textos e Livros</h2>
+    <p class="lead">As quatro categorias vivem na mesma aba. Escolha uma nos botões do topo — cada um mostra quantos itens tem.</p>
+
+    <div class="chip-row">
+      <span class="chip active">Orações (8)</span>
+      <span class="chip">Livros (19)</span>
+      <span class="chip">Músicas (1)</span>
+      <span class="chip">Textos (0)</span>
+    </div>
+    <p class="lead" style="margin-top:8px; font-size:12.5px">Conferido direto no banco em 2026-09-21 — muda conforme você cadastra.</p>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>1 · Ver e organizar os itens</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <div class="ref-grid">
+          <div class="ref-card">
+            <div class="answer">Toque no item = expande</div>
+            <p>A lista funciona como um acordeão: mostra descrição, tipo de arquivo e status Publicado/Rascunho.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer">Setas ↑ ↓ = reordenar</div>
+            <p>Dentro do item expandido — troca a ordem com o vizinho na hora, sem digitar número.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer">Editar = Publicação manual</div>
+            <p>Item expandido → "Editar" abre a seção "Publicação manual" já preenchida com os dados desse item.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer">Excluir pede confirmação</div>
+            <p>Item expandido → "Excluir" → toca de novo em "Confirmar exclusão" pra apagar de vez.</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>2 · Importar da planilha</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <ol class="steps">
+          <li>
+            <strong>Clique em "Importar da planilha"</strong>
+            <p>Dentro da categoria escolhida — abre com o conteúdo da planilha-índice daquela categoria.</p>
+          </li>
+          <li>
+            <strong>Confira o mapeamento das colunas</strong>
+            <p>O painel adivinha sozinho: Título, Descrição/Autor, Texto completo, Capa (imagem), Link do arquivo, Tipo de arquivo, Ordem. Toque numa coluna pra trocar, se errar.</p>
+          </li>
+          <li>
+            <strong>Escolha as linhas</strong>
+            <p>Todas vêm marcadas — desmarque as que não quer, ou use "Selecionar todos"/"Desmarcar todos".</p>
+          </li>
+          <li>
+            <strong>Clique em "Importar N selecionado(s)"</strong>
+            <p>Item com o MESMO TÍTULO já cadastrado nessa categoria é <strong>atualizado</strong> (não duplicado); título novo vira item novo. O aviso final mostra criados/atualizados/falhas.</p>
+          </li>
+        </ol>
+        <div class="warn"><strong>Reimportar é seguro:</strong> mudou algo na planilha (ex.: adicionou o link da capa depois)? Rode "Importar" de novo — atualiza em vez de duplicar, desde que o título continue igual.</div>
+      </div>
+    </details>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>3 · Publicação manual</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <p class="lead" style="margin-top:0">Cadastro/edição sem planilha — seção recolhível abaixo da lista de cada categoria (antes era a aba separada "Novo item").</p>
+        <div class="ref-grid">
+          <div class="ref-card">
+            <div class="answer">Identificação</div>
+            <p>Título, Descrição (ex.: Autor · Ano), categoria.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer">Conteúdo</div>
+            <p>Texto direto (sem arquivo), ou link de arquivo com tipo (PDF/Imagem/Áudio/Texto-Google Doc/TXT), ou streaming (músicas).</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer">Capa — só em Livros</div>
+            <p>Link de imagem opcional, exibido do lado do título na lista.</p>
+          </div>
+          <div class="ref-card">
+            <div class="answer">Ordem e Publicado</div>
+            <p>Ordem ajustável depois com ↑ ↓. Publicado desligado = rascunho (some do app, continua salvo).</p>
+          </div>
+        </div>
+        <div class="warn"><strong>Abrir em branco:</strong> toque no cabeçalho da seção (abaixo de "Apagar todos") — já abre na categoria selecionada. Trocar de categoria fecha a seção, a menos que esteja editando um item.</div>
+      </div>
+    </details>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>4 · Apagar todos de uma categoria</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <p class="lead" style="margin-top:0">Botão vermelho no fim da lista. Primeiro toque confirma (mostra quantos serão apagados); segundo toque apaga de vez. Sem desfazer.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="planilhas" data-searchable>
+    <span class="eyebrow">Referência rápida</span>
+    <h2>Colunas de cada planilha-índice</h2>
+    <p class="lead">Precisam estar compartilhadas como "Qualquer pessoa com o link". O nome exato da coluna pode variar (a adivinhação é por palavra-chave) — esses são os nomes reais usados hoje.</p>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Ver colunas e links de cada categoria</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <table class="kv-table">
+          <caption>Livros <a class="pill-link" style="float:right; margin:0" href="https://docs.google.com/spreadsheets/d/1LKTCZBxk7Auotzb7ud9Z-HQ8a9E6I2xtYQRUpVptw34/edit?usp=sharing" target="_blank" rel="noopener">Abrir planilha →</a></caption>
+          <tbody>
+            <tr><th>Coluna 1</th><td>Título</td></tr>
+            <tr><th>Coluna 2</th><td>Autor</td></tr>
+            <tr><th>Coluna 3</th><td>Link para o livro (PDF)</td></tr>
+            <tr><th>Coluna 4</th><td>Link para capa (imagem)</td></tr>
+          </tbody>
+        </table>
+
+        <table class="kv-table">
+          <caption>Textos <a class="pill-link" style="float:right; margin:0" href="https://docs.google.com/spreadsheets/d/1wo1EkVy5bo8o6rZNUYSCrH2oDAJuiw-hQAR5s7oLIT4/edit?usp=sharing" target="_blank" rel="noopener">Abrir planilha →</a></caption>
+          <tbody>
+            <tr><th>Coluna 1</th><td>Título do Texto</td></tr>
+            <tr><th>Coluna 2</th><td>Autor</td></tr>
+            <tr><th>Coluna 3</th><td>Link para GDoc — precisa ser um Google DOC (não Drive comum), compartilhado como "Qualquer pessoa com o link"; o texto é lido ao vivo do documento</td></tr>
+          </tbody>
+        </table>
+
+        <table class="kv-table">
+          <caption>Orações <a class="pill-link" style="float:right; margin:0" href="https://docs.google.com/spreadsheets/d/1Hz3lTmV4ubosdQEFhE91RkYxrRf8AhCvFF7kHciO7tk/edit?usp=sharing" target="_blank" rel="noopener">Abrir planilha →</a></caption>
+          <tbody>
+            <tr><th>Coluna 1</th><td>Título da Oração</td></tr>
+            <tr><th>Coluna 2</th><td>Texto completo — sem link de arquivo, oração é texto direto</td></tr>
+          </tbody>
+        </table>
+
+        <table class="kv-table">
+          <caption>Músicas <a class="pill-link" style="float:right; margin:0" href="https://docs.google.com/spreadsheets/d/1tJy1a21XWSQOeTiYOcPXr-Rrt0n54ry_cK2UzZKQoMc/edit?usp=sharing" target="_blank" rel="noopener">Abrir planilha →</a></caption>
+          <tbody>
+            <tr><th>Coluna 1</th><td>Título</td></tr>
+            <tr><th>Coluna 2</th><td>Intérprete/Artista</td></tr>
+            <tr><th>Coluna 3</th><td>Link (Spotify/YouTube Music/SoundCloud/Apple Music ou arquivo de áudio)</td></tr>
+          </tbody>
+        </table>
+
+        <div class="warn"><strong>Colunas de Orações e Músicas:</strong> convenção recomendada com base no modelo de dados do app (mesmos campos usados em Livros/Textos) — confira e ajuste conforme a planilha real, essa página não tem acesso direto a ela pra confirmar nome exato de coluna.</div>
+      </div>
+    </details>
+  </section>
+
+  <section id="confiabilidade" data-searchable>
+    <span class="eyebrow">Referência rápida</span>
+    <h2>Confiabilidade de cada tipo de link</h2>
+    <p class="lead">Nem todo link se comporta igual no app — isso resume o que é sólido e o que pode falhar.</p>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Ver por tipo de conteúdo</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <div class="ref-grid">
+          <div class="ref-card">
+            <span class="tag-status ok">Confiável</span>
+            <div class="answer">PDF, TXT e Capa (imagem)</div>
+            <p>Google Drive, link "Qualquer pessoa com o link". O app converte automaticamente pro formato de exibição direta.</p>
+          </div>
+          <div class="ref-card">
+            <span class="tag-status ok">Confiável</span>
+            <div class="answer">Texto (Google Doc)</div>
+            <p>Link de um Google DOC (não Drive comum). Lido ao vivo toda vez que alguém abre — editar o Doc atualiza o app na hora.</p>
+          </div>
+          <div class="ref-card">
+            <span class="tag-status ok">Confiável</span>
+            <div class="answer">Streaming (Spotify etc.)</div>
+            <p>Cole o link da faixa. Spotify toca embutido no app; as outras plataformas abrem o link original.</p>
+          </div>
+          <div class="ref-card">
+            <span class="tag-status warn">Instável</span>
+            <div class="answer">Áudio no Google Drive</div>
+            <p>O Drive não foi feito pra "tocar" áudio de verdade. O app tenta o player bonito do site primeiro e cai pro player do Google se falhar.</p>
+            <details><summary class="mini"><span class="arrow">▸</span> melhor opção</summary><p>Peça (na conversa com o Claude) pra hospedar o arquivo direto no site — aí o player fica sempre no estilo do app.</p></details>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section id="tecnologia" data-searchable>
+    <span class="eyebrow">Tecnologia</span>
+    <h2>Onde tudo vive</h2>
+    <p class="lead">Quatro lugares por trás do app — só pra quando algo precisar ser investigado.</p>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Ver os 4 lugares</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <div class="ref-grid">
+          <a class="ref-card ref-card--link" href="https://github.com/ai-igorbotelho-studio/mensageiros-da-paz" target="_blank" rel="noopener">
+            <div class="answer">GitHub <span class="go">Abrir →</span></div>
+            <p>Código-fonte do app. Todo commit fica registrado aqui, inclusive o histórico de decisões em <code>DECISIONS.md</code>.</p>
+            <ul><li>Ver o que mudou e quando</li><li>Só leitura pra acompanhar</li></ul>
+          </a>
+          <a class="ref-card ref-card--link" href="https://console.firebase.google.com/project/mensageiros-da-paz/overview" target="_blank" rel="noopener">
+            <div class="answer">Firebase <span class="go">Abrir →</span></div>
+            <p>Onde os dados moram (Firestore) e é criado o login de admin (Authentication).</p>
+            <ul><li><strong>Authentication</strong> → criar/remover quem entra em <code>/admin</code></li><li><strong>Rules</strong> → quem pode ler/escrever</li></ul>
+          </a>
+          <a class="ref-card ref-card--link" href="https://dash.cloudflare.com/?to=/:account/pages/view/mensageiros-da-paz" target="_blank" rel="noopener">
+            <div class="answer">Cloudflare Pages <span class="go">Abrir →</span></div>
+            <p>Onde o site fica no ar. Rebuilda sozinho a cada push no GitHub.</p>
+            <ul><li><strong>Deployments</strong> → ver/refazer o último deploy</li><li><strong>Environment variables</strong> → chaves do Firebase</li></ul>
+          </a>
+          <a class="ref-card ref-card--link" href="https://console.cloud.google.com/apis/credentials?project=mensageiros-da-paz" target="_blank" rel="noopener">
+            <div class="answer">Google Cloud Console <span class="go">Abrir →</span></div>
+            <p>Mesmo projeto do Firebase, por outra porta — chaves de API e permissões.</p>
+            <ul><li>Só costuma ser necessário se o login falhar com "chave inválida"</li></ul>
+          </a>
+        </div>
+      </div>
+    </details>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Referências — de onde vem cada dado</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <div class="ref-grid">
+          <div class="ref-card">
+            <span class="tag-status ok">Sem custo · offline</span>
+            <div class="answer">Data, estação e fase da lua (Home)</div>
+            <p>A faixa acima do menu inferior da Home (ex.: "20 de setembro, 2026 · Primavera · Lua Cheia") <strong>não vem de nenhuma API externa</strong> — é calculada direto no app, sempre no fuso de São Paulo, a cada abertura e a cada hora enquanto o app fica aberto.</p>
+            <details><summary class="mini"><span class="arrow">▸</span> como é calculado</summary>
+              <p><strong>Data:</strong> relógio do próprio aparelho, convertido pro fuso <code>America/Sao_Paulo</code>.</p>
+              <p><strong>Estação:</strong> datas fixas de início de estação do hemisfério sul (verão ≈ 21/dez, outono ≈ 20/mar, inverno ≈ 21/jun, primavera ≈ 23/set) — precisão de dia, não a hora exata do equinócio/solstício.</p>
+              <p><strong>Lua:</strong> fórmula astronômica padrão do ciclo sinódico (29,53 dias), contada a partir de uma lua nova de referência conhecida (06/01/2000). Não bate 100% com um app de astronomia profissional, mas é a mesma conta que a maioria dos calendários lunares usa.</p>
+              <p>Código: <code>app/src/utils/skyInfo.ts</code>. Por ser cálculo puro (sem chamada de rede), mantém o app com custo zero e funciona mesmo sem internet.</p>
+            </details>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section id="identidade" data-searchable>
+    <span class="eyebrow">Identidade visual</span>
+    <h2>Mini guia de aplicação da marca</h2>
+    <p class="lead">Paleta, tipografia e regras de uso — pra manter tudo consistente ao criar novas telas, materiais ou pedir ajustes visuais. Esquema de cor "Ceremony and legacy in education" (Goethe), com modo escuro automático.</p>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Paleta de cor</span><span class="arrow">▸</span></summary>
+      <div class="section-body palette-view" data-mode="grid">
+        <div class="view-toggle" role="group" aria-label="Modo de visualização da paleta">
+          <button type="button" data-palette-mode="grid" aria-pressed="true">Grade</button>
+          <button type="button" data-palette-mode="band" aria-pressed="false">Faixa combinada</button>
+        </div>
+
+        <p class="subhead" style="margin-top:0">Modo claro</p>
+        <div class="palette-band-wrap">
+          <div class="palette-band">
+            <div class="seg" style="background:#803C7A"><span class="seg-label">Mulberry<br>#803C7A</span></div>
+            <div class="seg" style="background:#AF65A8"><span class="seg-label">Magenta<br>#AF65A8</span></div>
+            <div class="seg" style="background:#FFEDDF"><span class="seg-label">Pale apricot<br>#FFEDDF</span></div>
+            <div class="seg" style="background:#FFF6EF"><span class="seg-label">Surface<br>#FFF6EF</span></div>
+            <div class="seg" style="background:#3BCFA9"><span class="seg-label">Sage<br>#3BCFA9</span></div>
+            <div class="seg" style="background:#00170C"><span class="seg-label">Deep mint<br>#00170C</span></div>
+            <div class="seg" style="background:#6B4463"><span class="seg-label">Texto sec.<br>#6B4463</span></div>
+            <div class="seg" style="background:#B3261E"><span class="seg-label">Danger<br>#B3261E</span></div>
+            <div class="seg" style="background:#E7C9E3"><span class="seg-label">Inativo<br>#E7C9E3</span></div>
+          </div>
+          <p class="lead" style="margin:0; font-size:12.5px">Faixa combinada mostra como as cores convivem lado a lado — útil pra checar harmonia antes de aplicar numa tela nova.</p>
+        </div>
+
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch-color" style="background:#803C7A"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Mulberry</div>
+              <div class="swatch-role">Primária — botões, links, ícones ativos</div>
+              <div class="swatch-codes"><code>#803C7A</code><code>rgb(128, 60, 122)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#AF65A8"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Magenta</div>
+              <div class="swatch-role">Secundária — variação clara da primária</div>
+              <div class="swatch-codes"><code>#AF65A8</code><code>rgb(175, 101, 168)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#FFEDDF"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Pale apricot</div>
+              <div class="swatch-role">Fundo — nunca branco puro</div>
+              <div class="swatch-codes"><code>#FFEDDF</code><code>rgb(255, 237, 223)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#FFF6EF; border-bottom:1px solid var(--border)"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Surface</div>
+              <div class="swatch-role">Cartões, inputs — tinta clara do fundo</div>
+              <div class="swatch-codes"><code>#FFF6EF</code><code>rgb(255, 246, 239)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#3BCFA9"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Sage</div>
+              <div class="swatch-role">Destaque e sucesso (toast/status verde)</div>
+              <div class="swatch-codes"><code>#3BCFA9</code><code>rgb(59, 207, 169)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#00170C"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Deep mint</div>
+              <div class="swatch-role">Texto principal — nunca preto puro</div>
+              <div class="swatch-codes"><code>#00170C</code><code>rgb(0, 23, 12)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#6B4463"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Texto secundário</div>
+              <div class="swatch-role">Legendas, descrições, texto de apoio</div>
+              <div class="swatch-codes"><code>#6B4463</code><code>rgb(107, 68, 99)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#B3261E"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Danger</div>
+              <div class="swatch-role">Ação destrutiva — excluir, erro</div>
+              <div class="swatch-codes"><code>#B3261E</code><code>rgb(179, 38, 30)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#E7C9E3"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Inativo (inverseMuted)</div>
+              <div class="swatch-role">Ícone/texto inativo sobre fundo primário sólido (ex.: BottomNavBar)</div>
+              <div class="swatch-codes"><code>#E7C9E3</code><code>rgb(231, 201, 227)</code></div>
+            </div>
+          </div>
+        </div>
+        <p class="lead" style="margin:8px 0 0; font-size:12.5px"><code>success</code> (#3BCFA9) e <code>darkBackground</code> (#00170C) não aparecem à parte — são exatamente as mesmas cores de Sage e Deep mint acima, só com outro nome no código.</p>
+
+        <p class="subhead">Modo escuro (automático, segue o sistema)</p>
+        <div class="palette-band-wrap">
+          <div class="palette-band">
+            <div class="seg" style="background:#00170C"><span class="seg-label">Fundo escuro<br>#00170C</span></div>
+            <div class="seg" style="background:#122A1F"><span class="seg-label">Surface escura<br>#122A1F</span></div>
+            <div class="seg" style="background:#C77FC0"><span class="seg-label">Primária escura<br>#C77FC0</span></div>
+            <div class="seg" style="background:#FFEDDF"><span class="seg-label">Texto no escuro<br>#FFEDDF</span></div>
+          </div>
+        </div>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch-color" style="background:#00170C"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Fundo escuro</div>
+              <div class="swatch-role">Substitui o Pale apricot no dark mode</div>
+              <div class="swatch-codes"><code>#00170C</code><code>rgb(0, 23, 12)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#122A1F"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Surface escura</div>
+              <div class="swatch-role">Cartões/inputs no dark mode</div>
+              <div class="swatch-codes"><code>#122A1F</code><code>rgb(18, 42, 31)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#C77FC0"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Primária escura</div>
+              <div class="swatch-role">Mulberry clareada — contraste no fundo escuro</div>
+              <div class="swatch-codes"><code>#C77FC0</code><code>rgb(199, 127, 192)</code></div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#FFEDDF"></div>
+            <div class="swatch-info">
+              <div class="swatch-name">Texto no escuro</div>
+              <div class="swatch-role">Pale apricot vira texto no dark mode</div>
+              <div class="swatch-codes"><code>#FFEDDF</code><code>rgb(255, 237, 223)</code></div>
+            </div>
+          </div>
+        </div>
+        <div class="warn"><strong>Regra fixa:</strong> nunca usar preto puro (<code>#000000</code>) nem branco puro (<code>#FFFFFF</code>) — sempre os tons de "quase preto"/"quase branco" da paleta acima.</div>
+        <div class="export-row">
+          <button type="button" id="exportPaletaBtn"><span class="ico">↓</span> Exportar .md</button>
+        </div>
+      </div>
+    </details>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Tipografia</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <div class="type-sample">
+          <div class="label-row"><span class="name">Lora — títulos e headlines</span><span class="meta">Google Fonts · serifada</span></div>
+          <p class="preview-display" style="font-size:30px; margin:0 0 4px; color:var(--text)">Mensageiros da Paz</p>
+          <p class="preview-display" style="font-size:17px; margin:0; color:var(--text-secondary)">Elegante e legível em qualquer tamanho de tela</p>
+        </div>
+        <div class="type-sample">
+          <div class="label-row"><span class="name">Lexend — corpo e interface</span><span class="meta">Google Fonts · sans geométrica</span></div>
+          <p class="preview-body" style="font-size:16px; margin:0 0 4px; color:var(--text)">Texto de corpo, botões, rótulos e descrições.</p>
+          <p class="preview-body" style="font-size:13px; margin:0; color:var(--text-secondary)">Aa Bb Cc · 0123456789</p>
+        </div>
+        <div class="type-sample">
+          <div class="label-row"><span class="name">DM Mono — código e dados técnicos</span><span class="meta">Google Fonts · monoespaçada</span></div>
+          <p class="preview-mono" style="font-size:14px; margin:0; color:var(--text)">firebase.google.com · app/src/theme/tokens.ts</p>
+        </div>
+        <div class="warn"><strong>Antes era Bodoni Moda:</strong> trocada por Lora em 2026-09-21 — Bodoni tinha contraste alto e x-height baixo demais, ficando difícil de ler nos títulos em telas pequenas de celular. Lora mantém o caráter elegante e serifado, mas lê bem em qualquer tamanho.</div>
+        <div class="export-row">
+          <button type="button" id="exportTipografiaBtn"><span class="ico">↓</span> Exportar .md</button>
+        </div>
+      </div>
+    </details>
+
+    <details class="section-details">
+      <summary class="section-toggle"><span>Como usar — regras de aplicação</span><span class="arrow">▸</span></summary>
+      <div class="section-body">
+        <ul class="usage-list">
+          <li><strong>Botões sempre em formato pílula</strong> (borda totalmente arredondada) — nunca cantos quadrados ou levemente arredondados.</li>
+          <li><strong>Nunca usar emoji</strong> — todo ícone é um desenho de linha em SVG (ver <code>CategoryIcons.tsx</code>), no mesmo estilo minimalista em todo o app.</li>
+          <li><strong>Cor de destrutivo (Danger) só pra excluir/erro</strong> — nunca usar Sage (verde de sucesso) em texto de erro ou botão de exclusão.</li>
+          <li><strong>Contraste sobre fundo primário sólido</strong> — usar "Texto no escuro"/tons claros da paleta, nunca Magenta sobre Mulberry (contraste baixo demais).</li>
+          <li><strong>Espaçamento e toque</strong> — área mínima de toque 44px, escala de espaçamento fixa (4 · 8 · 16 · 24 · 32 · 48px), nunca valores soltos.</li>
+          <li class="dont"><strong>Não fazer:</strong> preto/branco puro, cantos retos em botão, emoji, texto de erro em verde, roxo sobre roxo de baixo contraste.</li>
+        </ul>
+        <p class="lead" style="margin:0 0 12px">Fonte da verdade no código: <code>app/src/theme/tokens.ts</code> (cor, fonte, espaçamento, raio) — qualquer ajuste visual deve mudar lá primeiro, nunca um valor solto direto num componente.</p>
+        <div class="export-row">
+          <button type="button" id="exportIdentidadeBtn"><span class="ico">↓</span> Exportar guia completo (.md)</button>
+        </div>
+      </div>
+    </details>
+  </section>
+
+    </div>
+  </div>
+
+  <footer>Mensageiros da Paz · guia interno, não compartilhar publicamente</footer>
+</div>
+
+<script>
+(function () {
+  var input = document.getElementById("guideSearch");
+  var hint = document.getElementById("searchHint");
+  var sections = Array.prototype.slice.call(document.querySelectorAll("[data-searchable]"));
+
+  input.addEventListener("input", function () {
+    var q = input.value.trim().toLowerCase();
+    if (!q) {
+      sections.forEach(function (s) {
+        s.removeAttribute("data-dim");
+        s.removeAttribute("data-hit");
+      });
+      hint.textContent = "";
+      return;
+    }
+    var hits = 0;
+    sections.forEach(function (s) {
+      var match = s.textContent.toLowerCase().indexOf(q) !== -1;
+      if (match) {
+        s.removeAttribute("data-dim");
+        s.setAttribute("data-hit", "true");
+        hits++;
+      } else {
+        s.setAttribute("data-dim", "true");
+        s.removeAttribute("data-hit");
+      }
+    });
+    hint.textContent = hits === 0
+      ? "Nada encontrado — tente outra palavra."
+      : hits + " seção(ões) com \"" + q + "\"";
+  });
+
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      var firstHit = document.querySelector("[data-hit='true']");
+      if (firstHit) firstHit.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+
+  document.getElementById("expandAllBtn").addEventListener("click", function () {
+    document.querySelectorAll("details").forEach(function (d) { d.open = true; });
+  });
+  document.getElementById("collapseAllBtn").addEventListener("click", function () {
+    document.querySelectorAll("details").forEach(function (d) { d.open = false; });
+  });
+
+  // Alterna a paleta entre grade de cards e faixa combinada.
+  document.querySelectorAll("[data-palette-mode]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".palette-view");
+      wrap.setAttribute("data-mode", btn.getAttribute("data-palette-mode"));
+      wrap.querySelectorAll("[data-palette-mode]").forEach(function (b) {
+        b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+      });
+    });
+  });
+
+  // Exportação em .md. Esta cópia roda no próprio domínio do app (não
+  // dentro de um artifact do claude.ai, que bloqueia link de download
+  // direto por sandbox) — então um link de download comum funciona
+  // normalmente. Mantém a capability "downloads" como caminho
+  // preferido só pelo caso de esta página também ser aberta de dentro
+  // de um artifact/preview do claude.ai.
+  async function downloadMarkdown(filename, content) {
+    if (window.claude && typeof window.claude.use === "function") {
+      try {
+        var downloads = await window.claude.use("downloads");
+        if (downloads) {
+          await downloads.save({ filename: filename, data: content });
+          return;
+        }
+      } catch (err) {
+        // "declined"/"rate_limited" etc — cai no download comum abaixo.
+      }
+    }
+    var blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  var PALETA_MD = [
+    "# Mensageiros da Paz — Paleta de cor",
+    "",
+    "Esquema \"Ceremony and legacy in education\" (Goethe). Regra fixa: nunca preto puro (`#000000`) nem branco puro (`#FFFFFF`).",
+    "",
+    "## Modo claro",
+    "",
+    "| Cor | Papel | HEX | RGB |",
+    "|---|---|---|---|",
+    "| Mulberry | Primária — botões, links, ícones ativos | `#803C7A` | `rgb(128, 60, 122)` |",
+    "| Magenta | Secundária — variação clara da primária | `#AF65A8` | `rgb(175, 101, 168)` |",
+    "| Pale apricot | Fundo | `#FFEDDF` | `rgb(255, 237, 223)` |",
+    "| Surface | Cartões, inputs | `#FFF6EF` | `rgb(255, 246, 239)` |",
+    "| Sage | Destaque e sucesso | `#3BCFA9` | `rgb(59, 207, 169)` |",
+    "| Deep mint | Texto principal | `#00170C` | `rgb(0, 23, 12)` |",
+    "| Texto secundário | Legendas, descrições | `#6B4463` | `rgb(107, 68, 99)` |",
+    "| Danger | Ação destrutiva — excluir, erro | `#B3261E` | `rgb(179, 38, 30)` |",
+    "| Inativo (inverseMuted) | Ícone/texto inativo sobre fundo primário sólido | `#E7C9E3` | `rgb(231, 201, 227)` |",
+    "",
+    "`success` (#3BCFA9) e `darkBackground` (#00170C) não têm linha própria — são as mesmas cores de Sage e Deep mint, só com outro nome no código.",
+    "",
+    "## Modo escuro (automático, segue o sistema)",
+    "",
+    "| Cor | Papel | HEX | RGB |",
+    "|---|---|---|---|",
+    "| Fundo escuro | Substitui o Pale apricot | `#00170C` | `rgb(0, 23, 12)` |",
+    "| Surface escura | Cartões/inputs | `#122A1F` | `rgb(18, 42, 31)` |",
+    "| Primária escura | Mulberry clareada (contraste no fundo escuro) | `#C77FC0` | `rgb(199, 127, 192)` |",
+    "| Texto no escuro | Pale apricot vira texto | `#FFEDDF` | `rgb(255, 237, 223)` |",
+    "",
+    "Fonte da verdade no código: `app/src/theme/tokens.ts` (`colors`/`darkColors`).",
+    "",
+  ].join("\n");
+
+  var TIPOGRAFIA_MD = [
+    "# Mensageiros da Paz — Tipografia",
+    "",
+    "| Fonte | Uso | Origem |",
+    "|---|---|---|",
+    "| Lora | Títulos e headlines — serifada, desenhada pra tela | Google Fonts |",
+    "| Lexend | Corpo, botões, rótulos, descrições — sans geométrica | Google Fonts |",
+    "| DM Mono | Código e dados técnicos — monoespaçada | Google Fonts |",
+    "",
+    "Antes o título usava Bodoni Moda — trocada por Lora em 2026-09-21: Bodoni tinha contraste alto e x-height baixo demais, ilegível em telas pequenas de celular. Lora mantém o caráter elegante e serifado, com legibilidade melhor em qualquer tamanho.",
+    "",
+    "Fonte da verdade no código: `app/src/theme/tokens.ts` (`fonts`), carregada via `app/src/theme/loadWebFonts.ts` na web.",
+    "",
+  ].join("\n");
+
+  var IDENTIDADE_MD = [
+    "# Mensageiros da Paz — Identidade visual",
+    "",
+    "Mini guia de aplicação da marca — paleta, tipografia e regras de uso.",
+    "",
+    PALETA_MD,
+    TIPOGRAFIA_MD,
+    "## Como usar — regras de aplicação",
+    "",
+    "- **Botões sempre em formato pílula** (borda totalmente arredondada) — nunca cantos quadrados ou levemente arredondados.",
+    "- **Nunca usar emoji** — todo ícone é um desenho de linha em SVG (`CategoryIcons.tsx`), no mesmo estilo minimalista em todo o app.",
+    "- **Cor de destrutivo (Danger) só pra excluir/erro** — nunca usar Sage (verde de sucesso) em texto de erro ou botão de exclusão.",
+    "- **Contraste sobre fundo primário sólido** — usar tons claros da paleta, nunca Magenta sobre Mulberry (contraste baixo demais).",
+    "- **Espaçamento e toque** — área mínima de toque 44px, escala de espaçamento fixa (4 · 8 · 16 · 24 · 32 · 48px), nunca valores soltos.",
+    "- **Não fazer:** preto/branco puro, cantos retos em botão, emoji, texto de erro em verde, roxo sobre roxo de baixo contraste.",
+    "",
+    "Fonte da verdade no código: `app/src/theme/tokens.ts` (cor, fonte, espaçamento, raio) — qualquer ajuste visual deve mudar lá primeiro, nunca um valor solto direto num componente.",
+    "",
+  ].join("\n");
+
+  document.getElementById("exportPaletaBtn").addEventListener("click", function () {
+    downloadMarkdown("mensageiros-da-paz-paleta.md", PALETA_MD);
+  });
+  document.getElementById("exportTipografiaBtn").addEventListener("click", function () {
+    downloadMarkdown("mensageiros-da-paz-tipografia.md", TIPOGRAFIA_MD);
+  });
+  document.getElementById("exportIdentidadeBtn").addEventListener("click", function () {
+    downloadMarkdown("mensageiros-da-paz-identidade-visual.md", IDENTIDADE_MD);
+  });
+})();
+</script>
+
+</body></html>

@@ -85,10 +85,14 @@ const PRACTICE_SHEET_URL =
 
 // Guia do Admin (referência rápida do painel, com paleta/tipografia/uso)
 // espelhado como uma 3ª aba, na mesma hierarquia de Prática da Semana e
-// Biblioteca — a pedido do Head (2026-09-21). É uma página externa
-// (artifact publicado), não faz parte do bundle do app: a aba abre um
-// link em vez de renderizar o HTML embutido.
-const ADMIN_GUIDE_URL = "https://claude.ai/artifact/SzkcNp6cLFxkGviajjkKUr";
+// Biblioteca — a pedido do Head (2026-09-21). Servido como arquivo
+// estático do próprio site (app/public/guia-admin.html, copiado pro
+// build do Cloudflare Pages automaticamente) em vez do link do artifact
+// do claude.ai: artifacts recusam ser embutidos em iframe de outro
+// domínio (X-Frame-Options/CSP — confirmado em produção, "claude.ai
+// refused to connect"), mas um arquivo do mesmo domínio embute sem essa
+// restrição.
+const ADMIN_GUIDE_URL = "https://mensageiros-da-paz.pages.dev/guia-admin.html";
 
 const DEFAULT_IMPORT_FILE_TYPE: Record<ContentCategory, FileType> = {
   oracoes: "gdoc",
