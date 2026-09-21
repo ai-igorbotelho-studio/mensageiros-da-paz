@@ -932,7 +932,7 @@ function AdminDashboard({ user }: { user: User }) {
                     const catItems = [...libraryOverview[c]].sort((a, b) => a.order - b.order);
                     return (
                       <View key={c} style={styles.overviewGroup}>
-                        <Pressable
+                        <PressableScale
                           style={styles.overviewGroupHeader}
                           onPress={() => {
                             setShowAllLibrary(false);
@@ -941,16 +941,17 @@ function AdminDashboard({ user }: { user: User }) {
                           accessibilityRole="button"
                           accessibilityLabel={`Abrir categoria ${CATEGORY_LABEL[c]}`}
                         >
-                          <CatIcon size={18} color={colors.primary} />
+                          <CatIcon size={18} color={colors.surface} />
                           <Text style={styles.overviewGroupTitle}>
                             {CATEGORY_LABEL[c]} ({catItems.length})
                           </Text>
-                        </Pressable>
+                          <Text style={styles.overviewGroupChevron}>›</Text>
+                        </PressableScale>
                         {catItems.length === 0 ? (
                           <Text style={styles.fieldHint}>Nenhum item cadastrado.</Text>
                         ) : (
                           catItems.map((item) => (
-                            <Pressable
+                            <PressableScale
                               key={item.id}
                               style={styles.overviewItemRow}
                               onPress={() => {
@@ -958,6 +959,7 @@ function AdminDashboard({ user }: { user: User }) {
                                 setCategory(c);
                               }}
                               accessibilityRole="button"
+                              accessibilityLabel={`Abrir ${item.title || "item sem título"} em ${CATEGORY_LABEL[c]}`}
                             >
                               <Text style={styles.overviewItemTitle} numberOfLines={1}>
                                 {item.title || "(sem título)"}
@@ -965,7 +967,8 @@ function AdminDashboard({ user }: { user: User }) {
                               {!item.published ? (
                                 <Text style={styles.overviewItemDraft}>rascunho</Text>
                               ) : null}
-                            </Pressable>
+                              <Text style={styles.overviewItemChevron}>›</Text>
+                            </PressableScale>
                           ))
                         )}
                       </View>
@@ -2063,20 +2066,32 @@ const styles = StyleSheet.create({
   overviewGroup: {
     marginTop: spacing.md,
   },
+  // Cabeçalho de categoria — fundo sólido + seta, pra ler como botão de
+  // fato (achado do Head 2026-09-21: antes era só texto com uma linha
+  // embaixo, indistinguível de um título de seção comum).
   overviewGroupHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.primaryLight,
+    gap: spacing.sm,
+    minHeight: minTouchSize,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radii.md,
     marginBottom: spacing.xs,
   },
   overviewGroupTitle: {
+    flex: 1,
     fontFamily: fonts.bodyFallback,
     fontWeight: "700",
     fontSize: 14,
-    color: colors.primary,
+    color: colors.surface,
+  },
+  overviewGroupChevron: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.surface,
   },
   overviewItemRow: {
     flexDirection: "row",
@@ -2084,8 +2099,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     minHeight: minTouchSize - 12,
     paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
     paddingLeft: spacing.md,
     gap: spacing.sm,
+    borderRadius: radii.sm,
   },
   overviewItemTitle: {
     flex: 1,
@@ -2098,6 +2115,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: colors.textSecondary,
+  },
+  overviewItemChevron: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.primaryLight,
   },
   accordionCard: {
     backgroundColor: colors.background,
