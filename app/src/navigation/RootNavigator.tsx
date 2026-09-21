@@ -9,6 +9,7 @@ import { ItemDetailScreen } from "@/screens/ItemDetailScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 import { AdminScreen } from "@/screens/AdminScreen";
 import { PressableScale } from "@/components/PressableScale";
+import { GearIcon } from "@/components/CategoryIcons";
 import type { RootStackParamList } from "@/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -102,7 +103,7 @@ export function RootNavigator() {
                 accessibilityRole="button"
                 accessibilityLabel="Configurações"
               >
-                <Text style={{ fontSize: 20, color: colors.primary }}>⚙</Text>
+                <GearIcon size={20} color={colors.primary} />
               </PressableScale>
             ),
           })}

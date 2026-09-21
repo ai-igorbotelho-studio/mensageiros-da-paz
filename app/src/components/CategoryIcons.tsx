@@ -76,3 +76,23 @@ export function BookIcon({ size = 20, color = "#FFF" }: IconProps) {
     </Svg>
   );
 }
+
+/**
+ * Ícone de "engrenagem" pra Configurações, substituindo o glifo Unicode
+ * "⚙" usado antes (`RootNavigator.tsx`) — renderiza colorido/como
+ * emoji em algumas plataformas, contra a regra "nunca emoji"
+ * (achado na auditoria de direção criativa pré-V1.0, 2026-09-21).
+ */
+export function GearIcon({ size = 20, color = "#FFF" }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={3} stroke={color} strokeWidth={1.6} />
+      <Path
+        d="M12 3.5v2.3M12 18.2v2.3M20.5 12h-2.3M5.8 12H3.5M17.7 6.3l-1.6 1.6M7.9 16.1l-1.6 1.6M17.7 17.7l-1.6-1.6M7.9 7.9 6.3 6.3"
+        stroke={color}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
