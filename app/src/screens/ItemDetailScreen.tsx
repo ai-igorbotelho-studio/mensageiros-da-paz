@@ -57,6 +57,21 @@ type Props = NativeStackScreenProps<RootStackParamList, "ItemDetail">;
  */
 const VOLUME_STEP = 0.1;
 
+// Itens importados de planilha às vezes trazem o título repetido como
+// primeira linha do corpo do texto — o título já aparece uma vez no
+// cabeçalho da tela (`styles.title`), então essa repetição só duplicava
+// o mesmo texto visualmente (relatado 2026-09-21, ex.: "Consagração do
+// Aposento"). Remove a linha só quando ela bate com o título, sem mexer
+// no resto do conteúdo.
+function stripLeadingTitle(text: string, title: string): string {
+  const lines = text.split("\n");
+  const firstLine = lines[0]?.trim();
+  if (firstLine && title.trim() && firstLine.toLowerCase() === title.trim().toLowerCase()) {
+    return lines.slice(1).join("\n").replace(/^\n+/, "");
+  }
+  return text;
+}
+
 export function ItemDetailScreen({ route, navigation }: Props) {
   const { item } = route.params;
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -224,7 +239,9 @@ export function ItemDetailScreen({ route, navigation }: Props) {
         <Text style={styles.description}>{item.description}</Text>
       ) : null}
 
-      {item.text ? <Text style={styles.itemText}>{item.text}</Text> : null}
+      {item.text ? (
+        <Text style={styles.itemText}>{stripLeadingTitle(item.text, item.title)}</Text>
+      ) : null}
 
       {isGdoc && gdocNotARealDoc && item.fileUrl ? (
         <View style={styles.pdfBlock}>
@@ -268,7 +285,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
             }}
           />
         ) : (
-          <Text style={styles.itemText}>{gdocText}</Text>
+          <Text style={styles.itemText}>{stripLeadingTitle(gdocText ?? "", item.title)}</Text>
         )
       ) : null}
 
@@ -293,7 +310,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
             }}
           />
         ) : (
-          <Text style={styles.itemText}>{txtContent}</Text>
+          <Text style={styles.itemText}>{stripLeadingTitle(txtContent ?? "", item.title)}</Text>
         )
       ) : null}
 
