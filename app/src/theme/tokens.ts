@@ -30,6 +30,12 @@ export const darkColors = {
   surface: "#122A1F",
   textPrimary: "#FFEDDF",
   textSecondary: "#D89ED1",
+  // Mulberry (#803C7A) sozinho como texto/link sobre o fundo quase-preto
+  // tem contraste baixo — clareado pra #C77FC0 só neste tom, mantendo o
+  // mesmo matiz. Usado hoje na tela de Admin (fundo escuro proposital,
+  // pra diferenciar do app — 2026-09-21) e já documentado no Guia do
+  // Admin > Identidade Visual, seção "modo escuro".
+  primary: "#C77FC0",
 } as const;
 
 /**

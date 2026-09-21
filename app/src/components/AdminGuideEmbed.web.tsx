@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import { colors, radii } from "@/theme/tokens";
+import { darkColors as colors, radii } from "@/theme/tokens";
 
 interface Props {
   url: string;

@@ -11,7 +11,13 @@ import {
   View,
 } from "react-native";
 import type { User } from "firebase/auth";
-import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+// Fundo escuro só no Admin, de propósito — diferencia visualmente do
+// app público (2026-09-21, a pedido do Head), sem inventar cor nova:
+// `darkColors` já é a variante escura documentada da mesma paleta
+// (Guia do Admin > Identidade Visual > "modo escuro"), só que ainda não
+// tinha nenhum consumidor real no código. Renomeado pra `colors` neste
+// arquivo pra não precisar tocar cada uso abaixo.
+import { darkColors as colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { AdminGuideEmbed } from "@/components/AdminGuideEmbed";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
 import {

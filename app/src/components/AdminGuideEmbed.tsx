@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
-import { colors, radii } from "@/theme/tokens";
+import { darkColors as colors, radii } from "@/theme/tokens";
 
 interface Props {
   url: string;
