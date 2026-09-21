@@ -331,6 +331,14 @@ function AdminDashboard({ user }: { user: User }) {
   // Abre a Biblioteca já em "Biblioteca completa" — visão geral primeiro,
   // categoria específica é uma escolha explícita (a pedido do Head).
   const [showAllLibrary, setShowAllLibrary] = useState(true);
+  // Categorias com a lista de itens recolhida, na Biblioteca completa —
+  // o cabeçalho de categoria agora funciona como accordeon (toque
+  // recolhe/expande só a lista) separado do botão "Ver todos" (que
+  // navega pra área da categoria), a pedido do Head (2026-09-21).
+  // Nenhuma recolhida por padrão = mesmo comportamento visual de antes.
+  const [collapsedOverviewCategories, setCollapsedOverviewCategories] = useState<
+    Set<ContentCategory>
+  >(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -429,6 +437,7 @@ function AdminDashboard({ user }: { user: User }) {
   function goToAdminHome() {
     setActiveTab("library");
     setShowAllLibrary(true);
+    setCollapsedOverviewCategories(new Set());
     setExpandedId(null);
     setConfirmDeleteId(null);
     setConfirmDeleteAll(false);
@@ -930,34 +939,62 @@ function AdminDashboard({ user }: { user: User }) {
                   CATEGORIES.map((c) => {
                     const CatIcon = CATEGORY_ICON[c];
                     const catItems = [...libraryOverview[c]].sort((a, b) => a.order - b.order);
+                    const collapsed = collapsedOverviewCategories.has(c);
+                    function openCategory() {
+                      setShowAllLibrary(false);
+                      setCategory(c);
+                    }
+                    function toggleCollapsed() {
+                      setCollapsedOverviewCategories((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(c)) {
+                          next.delete(c);
+                        } else {
+                          next.add(c);
+                        }
+                        return next;
+                      });
+                    }
                     return (
                       <View key={c} style={styles.overviewGroup}>
-                        <PressableScale
-                          style={styles.overviewGroupHeader}
-                          onPress={() => {
-                            setShowAllLibrary(false);
-                            setCategory(c);
-                          }}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Abrir categoria ${CATEGORY_LABEL[c]}`}
-                        >
-                          <CatIcon size={18} color={colors.surface} />
-                          <Text style={styles.overviewGroupTitle}>
-                            {CATEGORY_LABEL[c]} ({catItems.length})
-                          </Text>
-                          <Text style={styles.overviewGroupChevron}>›</Text>
-                        </PressableScale>
-                        {catItems.length === 0 ? (
+                        <View style={styles.overviewGroupHeader}>
+                          <PressableScale
+                            style={styles.overviewGroupToggle}
+                            onPress={toggleCollapsed}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${collapsed ? "Expandir" : "Recolher"} lista de ${CATEGORY_LABEL[c]}`}
+                            accessibilityState={{ expanded: !collapsed }}
+                          >
+                            <CatIcon size={18} color={colors.surface} />
+                            <Text style={styles.overviewGroupTitle}>
+                              {CATEGORY_LABEL[c]} ({catItems.length})
+                            </Text>
+                            <Text
+                              style={[
+                                styles.overviewGroupChevron,
+                                !collapsed && styles.overviewGroupChevronExpanded,
+                              ]}
+                            >
+                              ›
+                            </Text>
+                          </PressableScale>
+                          <PressableScale
+                            style={styles.overviewGroupGoButton}
+                            onPress={openCategory}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Ir para a área de ${CATEGORY_LABEL[c]}`}
+                          >
+                            <Text style={styles.overviewGroupGoButtonText}>Ver todos</Text>
+                          </PressableScale>
+                        </View>
+                        {collapsed ? null : catItems.length === 0 ? (
                           <Text style={styles.fieldHint}>Nenhum item cadastrado.</Text>
                         ) : (
                           catItems.map((item) => (
                             <PressableScale
                               key={item.id}
                               style={styles.overviewItemRow}
-                              onPress={() => {
-                                setShowAllLibrary(false);
-                                setCategory(c);
-                              }}
+                              onPress={openCategory}
                               accessibilityRole="button"
                               accessibilityLabel={`Abrir ${item.title || "item sem título"} em ${CATEGORY_LABEL[c]}`}
                             >
@@ -2068,17 +2105,40 @@ const styles = StyleSheet.create({
   },
   // Cabeçalho de categoria — fundo sólido + seta, pra ler como botão de
   // fato (achado do Head 2026-09-21: antes era só texto com uma linha
-  // embaixo, indistinguível de um título de seção comum).
+  // embaixo, indistinguível de um título de seção comum). Dois alvos de
+  // toque distintos lado a lado: o corpo (ícone+título) recolhe/expande
+  // a lista, como um accordeon; "Ver todos" navega de vez pra área da
+  // categoria — antes um único toque fazia as duas coisas confundidas
+  // (2026-09-21, a pedido do Head).
   overviewGroupHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
+    alignItems: "stretch",
+    gap: spacing.xs,
     minHeight: minTouchSize,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
     borderRadius: radii.md,
     marginBottom: spacing.xs,
+    overflow: "hidden",
+  },
+  overviewGroupToggle: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  overviewGroupGoButton: {
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+    borderLeftWidth: 1,
+    borderLeftColor: "rgba(255,255,255,0.25)",
+  },
+  overviewGroupGoButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 12.5,
+    color: colors.surface,
   },
   overviewGroupTitle: {
     flex: 1,
@@ -2092,6 +2152,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: colors.surface,
+  },
+  overviewGroupChevronExpanded: {
+    transform: [{ rotate: "90deg" }],
   },
   overviewItemRow: {
     flexDirection: "row",
