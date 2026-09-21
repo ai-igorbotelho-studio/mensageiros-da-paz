@@ -33,17 +33,22 @@ export const darkColors = {
 } as const;
 
 /**
- * Bodoni Moda (títulos/headline) e Lexend (corpo/texto) — paleta "Ceremony
- * and legacy in education", esquema Goethe. As três (Bodoni Moda, Lexend,
- * DM Mono) são Google Fonts, carregadas via <link> só na web em
- * `App.tsx` (`loadWebFonts` em `src/theme/loadWebFonts.ts`) — em nativo
- * (Expo Go/EAS) ainda não há bundling dos arquivos de fonte, então o RN
- * cai no fallback do sistema automaticamente quando a fonte não está
- * registrada.
+ * Lora (títulos/headline) e Lexend (corpo/texto) — paleta "Ceremony and
+ * legacy in education", esquema Goethe. As três (Lora, Lexend, DM Mono)
+ * são Google Fonts, carregadas via <link> só na web em `App.tsx`
+ * (`loadWebFonts` em `src/theme/loadWebFonts.ts`) — em nativo (Expo
+ * Go/EAS) ainda não há bundling dos arquivos de fonte, então o RN cai no
+ * fallback do sistema automaticamente quando a fonte não está registrada.
+ *
+ * Era Bodoni Moda — trocada por Lora (2026-09-21, a pedido do Head):
+ * Bodoni tem contraste alto e x-height baixo, ilegível nos tamanhos de
+ * título no mobile. Lora é uma serifada desenhada pra tela, com contraste
+ * mais suave e x-height maior — mantém a elegância combinando com Lexend,
+ * com legibilidade melhor em telas pequenas.
  */
 export const fonts = {
-  display: "Bodoni Moda",
-  displayFallback: "Bodoni Moda, Georgia, serif",
+  display: "Lora",
+  displayFallback: "Lora, Georgia, serif",
   body: "Lexend",
   bodyMedium: "Lexend",
   bodyFallback: "Lexend, system-ui, sans-serif",
