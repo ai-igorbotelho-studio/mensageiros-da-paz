@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize } from "@/theme/tokens";
@@ -8,6 +8,7 @@ import { ContentListScreen } from "@/screens/ContentListScreen";
 import { ItemDetailScreen } from "@/screens/ItemDetailScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
 import { AdminScreen } from "@/screens/AdminScreen";
+import { PressableScale } from "@/components/PressableScale";
 import type { RootStackParamList } from "@/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -61,7 +62,7 @@ export function RootNavigator() {
           // usados antes (nome da subpágina/item). Também funciona como
           // botão de voltar para a Home a partir de qualquer tela.
           headerTitle: () => (
-            <Pressable
+            <PressableScale
               onPress={() => navigation.navigate("Home")}
               hitSlop={8}
               accessibilityRole="button"
@@ -77,7 +78,7 @@ export function RootNavigator() {
               >
                 Mensageiros da Paz
               </Text>
-            </Pressable>
+            </PressableScale>
           ),
         })}
       >
@@ -89,7 +90,7 @@ export function RootNavigator() {
             // no cabeçalho da Home, já que o hub "Mensageiros" foi mesclado
             // aqui e deixou de existir como tela separada.
             headerRight: () => (
-              <Pressable
+              <PressableScale
                 onPress={() => navigation.navigate("Settings")}
                 hitSlop={8}
                 style={{
@@ -102,7 +103,7 @@ export function RootNavigator() {
                 accessibilityLabel="Configurações"
               >
                 <Text style={{ fontSize: 20, color: colors.primary }}>⚙</Text>
-              </Pressable>
+              </PressableScale>
             ),
           })}
         />

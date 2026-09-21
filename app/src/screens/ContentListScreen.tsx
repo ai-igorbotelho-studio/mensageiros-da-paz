@@ -80,13 +80,18 @@ export function ContentListScreen({ route, navigation }: Props) {
           data={items}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <ContentListItem
-              item={item}
-              onPress={(pressedItem) =>
-                navigation.navigate("ItemDetail", { item: pressedItem })
-              }
-            />
+          renderItem={({ item, index }) => (
+            // Entrada escalonada: cada item aparece um pouco depois do
+            // anterior (até o 6º — depois disso o atraso vira ruído em
+            // vez de efeito) em vez de a lista inteira "piscar" junto.
+            <FadeIn delay={Math.min(index, 6) * 40}>
+              <ContentListItem
+                item={item}
+                onPress={(pressedItem) =>
+                  navigation.navigate("ItemDetail", { item: pressedItem })
+                }
+              />
+            </FadeIn>
           )}
         />
       </FadeIn>
