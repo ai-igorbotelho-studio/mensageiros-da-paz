@@ -166,22 +166,36 @@
      "Identidade visual" ficava sempre cortada na borda). Trocado por um
      botão que abre um menu dropdown vertical — sem rolagem horizontal
      nenhuma, achado do Head 2026-09-21.
-     Fica em fluxo normal (nem `sticky` nem `fixed`) — as duas tentativas
-     de "grudar no topo ao rolar" quebraram de formas diferentes
-     (2026-09-21, achados do Head): `position: sticky` "congelava" no
-     Safari iOS depois de abrir/fechar uma seção <details> no meio do
-     scroll; a versão seguinte com `position: fixed` (alternado por
-     IntersectionObserver) cobria o cabeçalho da própria página ao
-     carregar embutida dentro do painel Admin (iframe dentro de área com
-     scroll própria — contexto instável demais pra prever). Sem fixar,
-     não quebra de jeito nenhum — o preço é não seguir a rolagem, mas o
-     sumário lateral (desktop) e a busca continuam disponíveis. */
+     Fixo desde o carregamento — acima até da imagem/título do topo, não
+     só depois de rolar (2026-09-21, a pedido do Head). As duas tentativas
+     anteriores de "grudar só depois de rolar" quebraram de formas
+     diferentes: `position: sticky` congelava no Safari iOS depois de
+     abrir/fechar uma seção <details> no meio do scroll; a versão com
+     `position: fixed` alternado por IntersectionObserver cobria o
+     cabeçalho da página ao carregar embutida no painel Admin. Fixo
+     sempre, sem alternar classe nenhuma via scroll, elimina as duas
+     categorias de bug (nada muda de estado, nada pra "congelar" ou
+     calcular errado). `#tocMenuSpacer` (elemento normal, sem posição
+     especial) reserva no fluxo a altura que o botão deixou de ocupar —
+     do contrário o topo da página ficaria escondido atrás dele. */
   nav.toc-menu {
+    position: fixed;
+    top: env(safe-area-inset-top, 0px);
+    left: 0;
+    right: 0;
+    z-index: 30;
     background: var(--bg);
-    padding-block: 10px;
-    margin-bottom: 8px;
+    padding: 10px 20px;
     border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
   }
+  nav.toc-menu > * { max-width: 1040px; margin-inline: auto; }
+  /* Altura definida via JS (mede o botão de verdade, já que ele muda de
+     tamanho com o texto da seção atual) — 58px é só o valor inicial
+     antes do JS rodar, pra não haver um pulo visível no primeiro
+     frame. */
+  .toc-menu-spacer { height: 58px; }
+  @media (min-width: 980px) { .toc-menu-spacer { display: none; } }
   /* Botão sólido na cor da marca (não a mesma linguagem visual de
      card/input do conteúdo — ex.: ref-card, search input) — é controle
      de navegação da página, não conteúdo, então precisa ler como algo
@@ -826,23 +840,7 @@
 </style>
 
 <div class="shell">
-  <div class="hero">
-    <img src="chama-tripla.png" alt="Emblema Chama Tripla" />
-    <h1>Guia do Admin</h1>
-    <p>Referência rápida do painel do Mensageiros da Paz — use a busca abaixo pra achar uma resposta específica, ou o sumário pra navegar por seção. Cada seção abre/fecha no toque.</p>
-  </div>
-
-  <div class="search-wrap">
-    <input id="guideSearch" type="search" placeholder="Buscar (ex.: capa, link, planilha, áudio)…" autocomplete="off" />
-  </div>
-  <p class="search-hint" id="searchHint"></p>
-
-  <div class="global-controls">
-    <button type="button" class="btn" id="expandAllBtn"><span class="ico">▾</span> Expandir tudo</button>
-    <button type="button" class="btn" id="collapseAllBtn"><span class="ico">▸</span> Recolher tudo</button>
-  </div>
-
-  <nav class="toc-menu">
+  <nav class="toc-menu" id="tocMenu">
     <button type="button" class="toc-menu-btn" id="tocMenuBtn" aria-expanded="false" aria-controls="tocMenuList">
       <span>
         <span class="eyebrow-label">Navegar por seção</span>
@@ -862,6 +860,23 @@
       <li><a href="#identidade">Identidade visual</a></li>
     </ul>
   </nav>
+  <div class="toc-menu-spacer" id="tocMenuSpacer"></div>
+
+  <div class="hero">
+    <img src="chama-tripla.png" alt="Emblema Chama Tripla" />
+    <h1>Guia do Admin</h1>
+    <p>Referência rápida do painel do Mensageiros da Paz — use a busca abaixo pra achar uma resposta específica, ou o sumário pra navegar por seção. Cada seção abre/fecha no toque.</p>
+  </div>
+
+  <div class="search-wrap">
+    <input id="guideSearch" type="search" placeholder="Buscar (ex.: capa, link, planilha, áudio)…" autocomplete="off" />
+  </div>
+  <p class="search-hint" id="searchHint"></p>
+
+  <div class="global-controls">
+    <button type="button" class="btn" id="expandAllBtn"><span class="ico">▾</span> Expandir tudo</button>
+    <button type="button" class="btn" id="collapseAllBtn"><span class="ico">▸</span> Recolher tudo</button>
+  </div>
 
   <div class="layout">
     <aside class="sidenav">
@@ -1576,7 +1591,16 @@
       btn.setAttribute("aria-expanded", "true");
     }
 
+    // Botão fixo desde o topo (2026-09-21, a pedido do Head): se a
+    // página ainda não está no topo, o primeiro toque só rola pra lá
+    // (mostra o começo da página, "home") — só quando já está no topo
+    // é que o toque abre/fecha o menu de seções.
     btn.addEventListener("click", function () {
+      if (window.scrollY > 4) {
+        closeMenu();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       if (list.hidden) openMenu();
       else closeMenu();
     });
@@ -1605,6 +1629,24 @@
         { rootMargin: "-40% 0px -55% 0px" }
       );
       sections.forEach(function (s) { observer.observe(s); });
+    }
+  })();
+
+  // Reserva no fluxo normal a altura real do botão fixo (o texto muda
+  // de tamanho conforme o nome da seção atual, então a altura não é
+  // sempre a mesma) — sem isso o topo da página ficaria escondido atrás
+  // dele.
+  (function () {
+    var nav = document.getElementById("tocMenu");
+    var spacer = document.getElementById("tocMenuSpacer");
+    if (!nav || !spacer) return;
+    function sync() {
+      spacer.style.height = nav.offsetHeight + "px";
+    }
+    sync();
+    window.addEventListener("resize", sync);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(sync);
     }
   })();
 
