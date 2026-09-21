@@ -40,9 +40,24 @@ export function BottomNavBar({ active }: Props) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  // A barra inteira dá um pequeno "pulso" elástico a cada troca de aba,
+  // além do círculo do ícone ativo — reforça a sensação de mola em vez
+  // de só o círculo se mexer sozinho (achado do Head, 2026-09-21).
+  const barScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    barScale.setValue(0.94);
+    Animated.spring(barScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 18,
+    }).start();
+  }, [active, barScale]);
+
   return (
     <View style={styles.floatingWrap} pointerEvents="box-none">
-      <View style={styles.bar}>
+      <Animated.View style={[styles.bar, { transform: [{ scale: barScale }] }]}>
         {TABS.map((tab) => {
           const isActive = tab.category === active;
           return (
@@ -61,7 +76,7 @@ export function BottomNavBar({ active }: Props) {
             />
           );
         })}
-      </View>
+      </Animated.View>
     </View>
   );
 }
