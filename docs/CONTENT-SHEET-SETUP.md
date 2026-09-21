@@ -17,18 +17,20 @@ normalmente no Firestore — só não ganha uma cópia na planilha).
 
 ## Colunas esperadas em cada planilha
 
-| Categoria | Planilha | Colunas (nesta ordem) |
-|---|---|---|
-| Livros | [abrir](https://docs.google.com/spreadsheets/d/1LKTCZBxk7Auotzb7ud9Z-HQ8a9E6I2xtYQRUpVptw34/edit?usp=sharing) | Título · Autor · Link para o livro (PDF) · Link para capa (imagem) |
-| Textos | [abrir](https://docs.google.com/spreadsheets/d/1wo1EkVy5bo8o6rZNUYSCrH2oDAJuiw-hQAR5s7oLIT4/edit?usp=sharing) | Título do Texto · Autor · Link para GDoc |
-| Orações | [abrir](https://docs.google.com/spreadsheets/d/1Hz3lTmV4ubosdQEFhE91RkYxrRf8AhCvFF7kHciO7tk/edit?usp=sharing) | Título da Oração · Texto completo |
-| Músicas | [abrir](https://docs.google.com/spreadsheets/d/1tJy1a21XWSQOeTiYOcPXr-Rrt0n54ry_cK2UzZKQoMc/edit?usp=sharing) | Título · Intérprete/Artista · Link (Spotify/YouTube Music/SoundCloud/Apple Music ou arquivo de áudio) |
+Conferido direto em cada planilha real (2026-09-21, via leitura do Google
+Drive) — não é mais suposição:
 
-**Importante:** as colunas de Orações e Músicas acima são a convenção
-usada pelo app (mesma do Guia do Admin) — se a planilha real já tiver
-outras colunas/ordem, ajuste o `sheet.appendRow([...])` do script
-correspondente abaixo pra bater com as colunas de verdade, senão a
-linha nova entra desalinhada.
+| Categoria | Planilha | Colunas reais (nesta ordem) |
+|---|---|---|
+| Livros | [abrir](https://docs.google.com/spreadsheets/d/1LKTCZBxk7Auotzb7ud9Z-HQ8a9E6I2xtYQRUpVptw34/edit?usp=sharing) | Título · Autor · Link para o livro · Link para capa |
+| Textos | [abrir](https://docs.google.com/spreadsheets/d/1wo1EkVy5bo8o6rZNUYSCrH2oDAJuiw-hQAR5s7oLIT4/edit?usp=sharing) | Título do Texto · Autor · Link para GDoc |
+| Orações | [abrir](https://docs.google.com/spreadsheets/d/1Hz3lTmV4ubosdQEFhE91RkYxrRf8AhCvFF7kHciO7tk/edit?usp=sharing) | Nome da oração · Link para Gdoc |
+| Músicas | [abrir](https://docs.google.com/spreadsheets/d/1tJy1a21XWSQOeTiYOcPXr-Rrt0n54ry_cK2UzZKQoMc/edit?usp=sharing) | Música · Autor · Link para Gdoc |
+
+Orações é cadastrada como **link de Google Doc** (igual Textos), não
+texto colado direto na planilha — a suposição inicial ("Texto
+completo") estava errada e já foi corrigida no script abaixo e no
+código do app (`contentSheetSync.ts`).
 
 ## Passo a passo (repita para cada uma das 4 planilhas)
 
@@ -91,7 +93,7 @@ function doPost(e) {
   var body = JSON.parse(e.postData.contents);
   sheet.appendRow([
     body.titulo || "",
-    body.texto || "",
+    body.link || "",
   ]);
   return ContentService.createTextOutput(
     JSON.stringify({ ok: true })

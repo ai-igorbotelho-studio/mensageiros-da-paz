@@ -47,9 +47,13 @@ function rowFor(category: ContentCategory, item: ItemFormValues): Record<string,
         link: item.fileUrl,
       };
     case "oracoes":
+      // Conferido direto na planilha real (2026-09-21): colunas são
+      // "Nome da oração" e "Link para Gdoc" — a suposição inicial
+      // ("Texto completo") estava errada, orações são cadastradas como
+      // link de Google Doc, igual Textos, não texto colado.
       return {
         titulo: item.title,
-        texto: item.text,
+        link: item.fileUrl,
       };
     case "musicas":
       return {
