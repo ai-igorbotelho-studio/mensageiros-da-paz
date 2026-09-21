@@ -1,1 +1,10 @@
-/*  /index.html  200!
+# SPA fallback: qualquer rota (ex. /admin, /configuracoes) cai no
+# index.html, que aí sim resolve a rota certa via React Navigation
+# linking. O "!" (forçar mesmo com arquivo estático existente) é
+# sintaxe do Netlify — o Cloudflare Pages rejeita e ignora a regra
+# inteira com esse sufixo ("Found invalid redirect lines... Parsed 0
+# valid redirect rules", visto no log de deploy 2026-09-21). Sem "!" é
+# sintaxe válida nos dois; aqui só precisamos mesmo do fallback pra
+# rota que não bate com nenhum arquivo estático, que é o comportamento
+# padrão sem o forçar.
+/*  /index.html  200
