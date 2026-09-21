@@ -1,8 +1,8 @@
-import React from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { colors, fonts, minTouchSize, spacing } from "@/theme/tokens";
+import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
 import { PressableScale } from "@/components/PressableScale";
 import type { ContentCategory, RootStackParamList } from "@/types";
@@ -18,6 +18,8 @@ const TABS: Array<{
   { label: "Textos", category: "textos", Icon: TextIcon },
 ];
 
+const DIAMOND_SIZE = 40;
+
 interface Props {
   // categoria da página atual (ausente na Home, que não pertence a nenhuma)
   active?: ContentCategory;
@@ -25,15 +27,11 @@ interface Props {
 
 /**
  * Barra de navegação flutuante, fixa na mesma posição em TODAS as
- * páginas — inclusive a Home. Cor invertida (fundo roxo sólido, ícones
- * e texto claros, sem borda) e sempre centralizada horizontalmente com
- * largura própria, em vez de esticar de ponta a ponta em telas largas
- * (2026-09-21, a pedido do Head — antes `left`/`right` fixos faziam a
- * barra ocupar a tela inteira em desktop, já que `maxWidth` não tem
- * efeito quando `left` e `right` estão os dois definidos num elemento
- * `position: absolute`). Por isso o wrapper externo ocupa a tela toda
- * só pra centralizar (`alignItems: "center"`), e a barra em si é quem
- * tem a largura máxima.
+ * páginas — inclusive a Home. Sempre centralizada horizontalmente com
+ * largura própria (não estica de ponta a ponta em telas largas). A
+ * categoria ativa "salta" pra fora da barra num losango destacado
+ * (2026-09-21, a pedido do Head, a partir de uma referência visual) —
+ * mais sofisticado que só trocar a cor do ícone.
  */
 export function BottomNavBar({ active }: Props) {
   const navigation =
@@ -45,9 +43,11 @@ export function BottomNavBar({ active }: Props) {
         {TABS.map((tab) => {
           const isActive = tab.category === active;
           return (
-            <PressableScale
+            <NavTab
               key={tab.category}
-              style={styles.tab}
+              label={tab.label}
+              Icon={tab.Icon}
+              isActive={isActive}
               onPress={() => {
                 if (isActive) return;
                 navigation.navigate("ContentList", {
@@ -55,21 +55,68 @@ export function BottomNavBar({ active }: Props) {
                   title: tab.label,
                 });
               }}
-              accessibilityRole="button"
-              accessibilityLabel={tab.label}
-              accessibilityState={{ selected: isActive }}
-            >
-              <View style={[styles.iconCircle, isActive && styles.iconCircleActive]}>
-                <tab.Icon size={20} color={isActive ? colors.primary : colors.inverseMuted} />
-              </View>
-              <Text style={[styles.label, isActive && styles.labelActive]}>
-                {tab.label}
-              </Text>
-            </PressableScale>
+            />
           );
         })}
       </View>
     </View>
+  );
+}
+
+interface NavTabProps {
+  label: string;
+  Icon: typeof PrayerIcon;
+  isActive: boolean;
+  onPress: () => void;
+}
+
+function NavTab({ label, Icon, isActive, onPress }: NavTabProps) {
+  const pop = useRef(new Animated.Value(isActive ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(pop, {
+      toValue: isActive ? 1 : 0,
+      useNativeDriver: true,
+      speed: 18,
+      bounciness: 9,
+    }).start();
+  }, [isActive, pop]);
+
+  const diamondScale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
+  const diamondTranslate = pop.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+
+  return (
+    <PressableScale
+      style={styles.tab}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: isActive }}
+    >
+      <Animated.View
+        style={[
+          styles.diamond,
+          {
+            opacity: pop,
+            transform: [
+              { translateY: diamondTranslate },
+              { scale: diamondScale },
+              { rotate: "45deg" },
+            ],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <View style={styles.diamondIconWrap}>
+          <Icon size={18} color={colors.surface} />
+        </View>
+      </Animated.View>
+
+      {!isActive ? <Icon size={20} color={colors.inverseMuted} /> : <View style={styles.iconSpacer} />}
+
+      <Text style={[styles.label, isActive && styles.labelActive]}>{label}</Text>
+      {isActive ? <View style={styles.underline} /> : null}
+    </PressableScale>
   );
 }
 
@@ -107,21 +154,41 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 2,
   },
-  iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  // Losango que "salta" pra fora da barra sobre a categoria ativa — o
+  // ícone dentro dele gira -45° pra compensar a rotação do losango e
+  // ficar em pé.
+  diamond: {
+    position: "absolute",
+    top: -(DIAMOND_SIZE / 2 + 14),
+    left: "50%",
+    marginLeft: -DIAMOND_SIZE / 2,
+    width: DIAMOND_SIZE,
+    height: DIAMOND_SIZE,
+    borderRadius: radii.sm,
+    backgroundColor: colors.primary,
+    borderWidth: 3,
+    borderColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
+    ...Platform.select({
+      web: { boxShadow: "0 4px 10px rgba(0,0,0,0.25)" },
+      default: {
+        shadowColor: "#000",
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 8,
+      },
+    }),
   },
-  // Círculo atrás do ícone da categoria atual, reforçando qual página
-  // está ativa além da cor do texto/ícone. Chegou a usar a cor de
-  // destaque (Sage/verde), mas ficou "chamativo" demais sobre o roxo
-  // (2026-09-21, a pedido do Head) — um círculo claro (mesma família do
-  // fundo do app) chama menos atenção sozinho e ainda contrasta bem
-  // com a barra roxa.
-  iconCircleActive: {
-    backgroundColor: colors.surface,
+  diamondIconWrap: {
+    transform: [{ rotate: "-45deg" }],
+  },
+  // Reserva o espaço do ícone normal quando ele "sobe" pro losango, pra
+  // não deslocar o rótulo abaixo.
+  iconSpacer: {
+    width: 20,
+    height: 20,
   },
   label: {
     fontFamily: fonts.bodyFallback,
@@ -131,5 +198,12 @@ const styles = StyleSheet.create({
   labelActive: {
     color: colors.surface,
     fontWeight: "700",
+  },
+  underline: {
+    marginTop: 2,
+    width: 16,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.surface,
   },
 });
