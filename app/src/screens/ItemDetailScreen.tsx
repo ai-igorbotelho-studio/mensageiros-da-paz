@@ -66,6 +66,13 @@ export function ItemDetailScreen({ route, navigation }: Props) {
   const [gdocText, setGdocText] = useState<string | null>(null);
   const [gdocLoading, setGdocLoading] = useState(false);
   const [gdocError, setGdocError] = useState(false);
+  // Categoria Textos assume fileType "gdoc" por padrão na importação —
+  // mas às vezes o link colado é de um PDF do Drive, não de um Google
+  // Doc de verdade (relatado 2026-09-21: "Textos não lê PDF?"). Em vez
+  // de mostrar erro genérico de "Google Doc", detecta esse caso (a URL
+  // não bate com o padrão /document/d/.../) e oferece abrir como
+  // arquivo normal, igual à categoria PDF.
+  const [gdocNotARealDoc, setGdocNotARealDoc] = useState(false);
   const [imageAttempt, setImageAttempt] = useState<0 | 1>(0);
   // Áudio do Drive tenta primeiro o player DO PRÓPRIO APP (bonito,
   // consistente com o resto da interface) usando o endpoint mais novo
@@ -88,7 +95,7 @@ export function ItemDetailScreen({ route, navigation }: Props) {
     if (!isGdoc || !item.fileUrl) return;
     const exportUrl = toGoogleDocsTextExportUrl(item.fileUrl);
     if (!exportUrl) {
-      setGdocError(true);
+      setGdocNotARealDoc(true);
       return;
     }
     setGdocLoading(true);
@@ -197,7 +204,23 @@ export function ItemDetailScreen({ route, navigation }: Props) {
 
       {item.text ? <Text style={styles.itemText}>{item.text}</Text> : null}
 
-      {isGdoc ? (
+      {isGdoc && gdocNotARealDoc && item.fileUrl ? (
+        <View style={styles.pdfBlock}>
+          <Text style={styles.description}>
+            Este item não é um Google Doc — é um arquivo (ex.: PDF). Toque abaixo para abri-lo.
+          </Text>
+          <PressableScale
+            style={styles.playButton}
+            onPress={() => Linking.openURL(item.fileUrl!)}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir arquivo"
+          >
+            <Text style={styles.playButtonText}>Abrir arquivo</Text>
+          </PressableScale>
+        </View>
+      ) : null}
+
+      {isGdoc && !gdocNotARealDoc ? (
         gdocLoading ? (
           <Text style={styles.description}>Carregando texto…</Text>
         ) : gdocError ? (
