@@ -1,0 +1,15 @@
+# O HTML nunca deve ficar em cache — sem isso, o navegador (ou o CDN do
+# Cloudflare) podia continuar servindo uma versão antiga da página, que
+# aponta pro bundle JS antigo, mesmo depois de um deploy novo. Foi isso
+# que causou o admin "reimportar" livros usando código desatualizado,
+# de antes do campo de capa existir (confirmado 2026-09-21 direto no
+# banco: os livros reimportados não tinham o campo de capa gravado —
+# nem vazio, ausente — só acontece com código antigo em cache).
+# Os arquivos dentro de /_expo/static/ já têm hash no nome (o próprio
+# Expo cuida disso), então esses continuam em cache livremente — só o
+# HTML (o ponteiro pra esses arquivos) precisa ser sempre revalidado.
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate

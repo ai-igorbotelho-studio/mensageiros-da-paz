@@ -53,6 +53,24 @@ export function toGoogleDrivePreviewUrl(url: string): string | null {
 }
 
 /**
+ * Endpoint mais novo do Drive pra baixar/streamar bytes
+ * (`drive.usercontent.google.com`, em vez do `drive.google.com/uc`
+ * legado) — trata melhor requisições por intervalo (necessárias pra
+ * áudio tocar/buscar posição no navegador). Usado como PRIMEIRA
+ * tentativa pro player customizado do próprio app (com play/pause,
+ * parar, volume — a cara do app, em vez da interface do Google); só
+ * cai pro iframe do Drive (`toGoogleDrivePreviewUrl`) se isso falhar,
+ * porque o iframe sempre funciona mas não dá pra estilizar (é de
+ * outro domínio).
+ */
+export function toGoogleDriveAudioStreamUrl(url: string): string | null {
+  if (!url.includes("drive.google.com")) return null;
+  const fileId = extractDriveFileId(url);
+  if (!fileId) return null;
+  return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
+}
+
+/**
  * URL de conteúdo de IMAGEM do Drive via `lh3.googleusercontent.com`
  * (o mesmo domínio de CDN que o próprio Drive/Fotos usa pra servir
  * miniaturas e imagens embutidas). `toDirectFileUrl` (`uc?export=...`)

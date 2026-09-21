@@ -19,6 +19,7 @@ import { PressableScale } from "@/components/PressableScale";
 import {
   toDirectFileUrl,
   toGoogleDocsTextExportUrl,
+  toGoogleDriveAudioStreamUrl,
   toGoogleDriveImageFallbackUrl,
   toGoogleDriveImageUrl,
   toGoogleDrivePreviewUrl,
@@ -66,18 +67,20 @@ export function ItemDetailScreen({ route, navigation }: Props) {
   const [gdocLoading, setGdocLoading] = useState(false);
   const [gdocError, setGdocError] = useState(false);
   const [imageAttempt, setImageAttempt] = useState<0 | 1>(0);
+  // Áudio do Drive tenta primeiro o player DO PRÓPRIO APP (bonito,
+  // consistente com o resto da interface) usando o endpoint mais novo
+  // do Drive pra bytes de arquivo; só cai pro iframe oficial do Drive
+  // (feio mas sempre funciona) se esse endpoint falhar de verdade —
+  // "o player do Drive é horrível" (2026-09-21). O endpoint legado
+  // (`toDirectFileUrl`) continua sendo o usado fora da web/fora do
+  // Drive.
+  const [driveIframeFallback, setDriveIframeFallback] = useState(false);
 
   const isGdoc = item.source === "upload" && item.fileType === "gdoc" && !!item.fileUrl;
-  // Áudio do Google Drive na web: expo-av tentando tocar direto (mesmo
-  // com a URL "direta") falhava de novo (relatado 2026-09-21) porque o
-  // endpoint do Drive força download em vez de streaming inline. O
-  // player embutido oficial do Drive resolve isso sem depender de
-  // nenhum parâmetro de URL — ver toGoogleDrivePreviewUrl.
+  const isDriveAudio =
+    item.source === "upload" && item.fileType === "audio" && !!item.fileUrl && item.fileUrl.includes("drive.google.com");
   const drivePreviewUrl =
-    Platform.OS === "web" &&
-    item.source === "upload" &&
-    item.fileType === "audio" &&
-    item.fileUrl
+    Platform.OS === "web" && isDriveAudio && driveIframeFallback && item.fileUrl
       ? toGoogleDrivePreviewUrl(item.fileUrl)
       : null;
 
@@ -112,8 +115,11 @@ export function ItemDetailScreen({ route, navigation }: Props) {
     setPlaybackError(false);
     try {
       if (!sound) {
+        const uri = isDriveAudio
+          ? toGoogleDriveAudioStreamUrl(item.fileUrl) ?? toDirectFileUrl(item.fileUrl)
+          : toDirectFileUrl(item.fileUrl);
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: toDirectFileUrl(item.fileUrl) },
+          { uri },
           { shouldPlay: true, volume },
           setStatus
         );
@@ -128,7 +134,13 @@ export function ItemDetailScreen({ route, navigation }: Props) {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("Falha ao tocar áudio:", item.fileUrl, err);
-      setPlaybackError(true);
+      if (isDriveAudio) {
+        // O player bonito não conseguiu tocar esse arquivo — cai pro
+        // iframe oficial do Drive, que sempre funciona.
+        setDriveIframeFallback(true);
+      } else {
+        setPlaybackError(true);
+      }
     }
   }
 
