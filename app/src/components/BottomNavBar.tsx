@@ -18,7 +18,7 @@ const TABS: Array<{
   { label: "Textos", category: "textos", Icon: TextIcon },
 ];
 
-const CIRCLE_SIZE = 40;
+const CIRCLE_SIZE = 58;
 
 interface Props {
   // categoria da página atual (ausente na Home, que não pertence a nenhuma)
@@ -28,10 +28,13 @@ interface Props {
 /**
  * Barra de navegação flutuante, fixa na mesma posição em TODAS as
  * páginas — inclusive a Home. Sempre centralizada horizontalmente com
- * largura própria (não estica de ponta a ponta em telas largas). Sem
- * sombra (2026-09-21, a pedido do Head — chegou a ter losango com
- * sombra numa versão anterior; achatado de propósito agora). A
- * categoria ativa "salta" pra fora da barra num círculo destacado.
+ * largura própria (não estica de ponta a ponta em telas largas). A
+ * categoria ativa "salta" pra fora da barra num círculo grande com
+ * brilho (halo de sombra colorida) e ícone maior/branco — redesenhado
+ * 2026-09-21 a pedido do Head, referência de app de câmbio/mercado com
+ * esse padrão de ícone ativo destacado + animação elástica ao trocar
+ * de aba (Animated.spring com "bounciness" alto, dá um leve exagero
+ * antes de assentar em vez de simplesmente aparecer).
  */
 export function BottomNavBar({ active }: Props) {
   const navigation =
@@ -77,13 +80,16 @@ function NavTab({ label, Icon, isActive, onPress }: NavTabProps) {
     Animated.spring(pop, {
       toValue: isActive ? 1 : 0,
       useNativeDriver: true,
-      speed: 18,
-      bounciness: 9,
+      speed: 14,
+      // Bounciness alto de propósito: o círculo "estoura" um pouco além
+      // do tamanho final antes de assentar — o movimento elástico que
+      // sinaliza a troca de aba, em vez de só aparecer/crescer reto.
+      bounciness: 16,
     }).start();
   }, [isActive, pop]);
 
-  const circleScale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
-  const circleTranslate = pop.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+  const circleScale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
+  const circleTranslate = pop.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
 
   return (
     <PressableScale
@@ -103,10 +109,10 @@ function NavTab({ label, Icon, isActive, onPress }: NavTabProps) {
         ]}
         pointerEvents="none"
       >
-        <Icon size={18} color={colors.surface} />
+        <Icon size={28} color={colors.surface} />
       </Animated.View>
 
-      {!isActive ? <Icon size={20} color={colors.inverseMuted} /> : <View style={styles.iconSpacer} />}
+      {!isActive ? <Icon size={22} color={colors.inverseMuted} /> : <View style={styles.iconSpacer} />}
 
       <Text style={[styles.label, isActive && styles.labelActive]}>{label}</Text>
       {isActive ? <View style={styles.underline} /> : null}
@@ -138,7 +144,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 2,
   },
-  // Círculo que "salta" pra fora da barra sobre a categoria ativa.
+  // Círculo que "salta" pra fora da barra sobre a categoria ativa — cor
+  // diferente da barra (Sage, o "destaque" da paleta, contra o Mulberry
+  // da barra) e halo de sombra colorida em volta, pra ler como um botão
+  // "aceso" de verdade, não só um ícone maior.
   circle: {
     position: "absolute",
     top: -(CIRCLE_SIZE / 2 + 14),
@@ -147,17 +156,22 @@ const styles = StyleSheet.create({
     width: CIRCLE_SIZE,
     height: CIRCLE_SIZE,
     borderRadius: CIRCLE_SIZE / 2,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     borderWidth: 3,
     borderColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: colors.accent,
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
   },
   // Reserva o espaço do ícone normal quando ele "sobe" pro círculo, pra
   // não deslocar o rótulo abaixo.
   iconSpacer: {
-    width: 20,
-    height: 20,
+    width: 22,
+    height: 22,
   },
   label: {
     fontFamily: fonts.bodyFallback,
