@@ -67,4 +67,4 @@ export const radii = {
 };
 
 export const minTouchSize = 44; // a11y — área mínima de toque conforme direção criativa
-export const minFontSize = 16; // a11y — fonte-base mínima
+export const minFontSize = 17; // a11y — fonte-base mínima (subida de 16 pra 17 a pedido do Head, 2026-09-21 — legibilidade no mobile)

@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 11,
+    fontSize: 12,
     color: colors.inverseMuted,
   },
   labelActive: {

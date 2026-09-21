@@ -120,14 +120,14 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textSecondary,
     textAlign: "center",
     marginBottom: spacing.sm,
   },
   practiceText: {
     fontFamily: fonts.displayFallback,
-    fontSize: 20,
+    fontSize: 21,
     lineHeight: 28,
     color: colors.textPrimary,
     textAlign: "center",

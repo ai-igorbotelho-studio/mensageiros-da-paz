@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   },
   caption: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textSecondary,
     textAlign: "center",
     marginTop: spacing.xs,

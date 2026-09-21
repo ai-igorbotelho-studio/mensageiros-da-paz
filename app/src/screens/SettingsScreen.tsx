@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.displayFallback,
-    fontSize: 22,
+    fontSize: 24,
     color: colors.textPrimary,
     marginBottom: spacing.lg,
   },
@@ -137,18 +137,18 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: 17,
     color: colors.textPrimary,
   },
   helper: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
   error: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 14,
+    fontSize: 15,
     // Antes usava colors.accent (Sage, a cor de SUCESSO) — uma
     // mensagem de erro aparecia verde, comunicando o oposto do texto.
     color: colors.danger,
@@ -156,10 +156,10 @@ const styles = StyleSheet.create({
   },
   notice: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textSecondary,
     marginTop: spacing.md,
-    lineHeight: 20,
+    lineHeight: 21,
   },
   adminLink: {
     marginTop: spacing.xxl,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   },
   adminLinkText: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textSecondary,
     textDecorationLine: "underline",
   },

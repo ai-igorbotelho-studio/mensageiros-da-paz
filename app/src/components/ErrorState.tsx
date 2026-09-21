@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   },
   message: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.textPrimary,
     textAlign: "center",
     lineHeight: 24,
@@ -62,6 +62,6 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontFamily: fonts.bodyFallback,
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: 17,
   },
 });

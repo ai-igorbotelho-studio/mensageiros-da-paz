@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
   },
   message: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.textSecondary,
     textAlign: "center",
     lineHeight: 24,

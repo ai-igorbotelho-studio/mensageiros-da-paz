@@ -445,26 +445,26 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 15,
     color: colors.primary,
   },
   title: {
     fontFamily: fonts.displayFallback,
-    fontSize: 22,
+    fontSize: 24,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   description: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 25,
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
   itemText: {
     fontFamily: fonts.displayFallback,
-    fontSize: 18,
-    lineHeight: 28,
+    fontSize: 19,
+    lineHeight: 29,
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   stopButtonText: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: 17,
     color: colors.textSecondary,
   },
   volumeRow: {
@@ -524,9 +524,9 @@ const styles = StyleSheet.create({
   volumeButtonText: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "700",
-    fontSize: 18,
+    fontSize: 19,
     color: colors.textPrimary,
-    lineHeight: 20,
+    lineHeight: 21,
   },
   volumeTrack: {
     flex: 1,
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   },
   volumeLabel: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textSecondary,
     width: 36,
     textAlign: "right",
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
   playButtonText: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: 17,
     color: colors.surface,
   },
 });

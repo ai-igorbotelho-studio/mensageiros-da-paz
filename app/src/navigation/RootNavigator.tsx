@@ -72,7 +72,7 @@ export function RootNavigator() {
               <Text
                 style={{
                   fontFamily: fonts.bodyFallback,
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: "700",
                   color: colors.primary,
                 }}

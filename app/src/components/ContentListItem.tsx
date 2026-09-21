@@ -165,12 +165,12 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.displayFallback,
     fontWeight: "700",
-    fontSize: 17,
+    fontSize: 18,
     color: colors.textPrimary,
   },
   description: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   arrowGlyph: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "300",
     color: colors.primary,
     // leve ajuste ótico: o glifo ↗ não fica visualmente centralizado
