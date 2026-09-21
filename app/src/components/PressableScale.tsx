@@ -1,17 +1,24 @@
 import React, { useRef } from "react";
-import { Animated, Pressable, type PressableProps } from "react-native";
+import { Animated, Pressable, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 
-interface Props extends Omit<PressableProps, "children"> {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+interface Props extends Omit<PressableProps, "children" | "style"> {
   children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
 }
 
 /**
  * `Pressable` com um leve "encolher" ao toque (scale 1 → 0.96, spring
  * suave) — microinteração consistente reutilizada em botões/cards do
- * app, em vez de cada tela reinventar a própria animação de toque
- * (2026-09-21, a pedido do Head: "animações sutis aos botões"). Não
- * aceita `children`/`style` como função (render prop) — só o caso de
- * uso simples, que é o único usado no app.
+ * app (2026-09-21, a pedido do Head: "animações sutis aos botões").
+ *
+ * A transformação vai direto no próprio `Pressable` animado
+ * (`Animated.createAnimatedComponent`), não numa `View` extra por
+ * dentro — uma `View` extra tem `flexDirection: "column"` por padrão e
+ * quebrava o layout de quem usava `style={{flexDirection:"row",...}}`
+ * (bug relatado 2026-09-21: card de item da lista com o badge
+ * esticando a largura toda em vez de ficar ao lado do texto).
  */
 export function PressableScale({ style, children, ...props }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -24,13 +31,13 @@ export function PressableScale({ style, children, ...props }: Props) {
   }
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPressIn={pressIn}
       onPressOut={pressOut}
-      style={style}
+      style={[style, { transform: [{ scale }] }]}
       {...props}
     >
-      <Animated.View style={{ transform: [{ scale }] }}>{children}</Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }
