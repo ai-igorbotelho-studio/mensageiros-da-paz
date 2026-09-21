@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import type { User } from "firebase/auth";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+import { AdminGuideEmbed } from "@/components/AdminGuideEmbed";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
 import {
   adminCreateItem,
@@ -301,7 +302,9 @@ function AdminDashboard({ user }: { user: User }) {
     Record<ContentCategory, ContentItem[]>
   >({ oracoes: [], musicas: [], textos: [], livros: [] });
   const [overviewLoading, setOverviewLoading] = useState(true);
-  const [showAllLibrary, setShowAllLibrary] = useState(false);
+  // Abre a Biblioteca já em "Biblioteca completa" — visão geral primeiro,
+  // categoria específica é uma escolha explícita (a pedido do Head).
+  const [showAllLibrary, setShowAllLibrary] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -741,20 +744,17 @@ function AdminDashboard({ user }: { user: User }) {
 
         {activeTab === "guide" ? (
           <View style={styles.libraryCard}>
-            <Text style={styles.libraryCardTitle}>Guia do Admin</Text>
-            <Text style={styles.helper}>
-              Referência rápida de tudo que dá pra fazer neste painel — passo
-              a passo, colunas de cada planilha, confiabilidade de link e a
-              identidade visual do app (paleta, tipografia, regras de uso).
-              Abre numa página separada.
-            </Text>
-            <Pressable
-              style={styles.primaryButton}
-              onPress={() => Linking.openURL(ADMIN_GUIDE_URL)}
-              accessibilityRole="link"
-            >
-              <Text style={styles.primaryButtonText}>Abrir Guia do Admin →</Text>
-            </Pressable>
+            <View style={styles.libraryCardHeader}>
+              <Text style={styles.libraryCardTitle}>Guia do Admin</Text>
+              <Pressable
+                style={styles.sheetButton}
+                onPress={() => Linking.openURL(ADMIN_GUIDE_URL)}
+                accessibilityRole="link"
+              >
+                <Text style={styles.sheetButtonText}>Abrir em nova aba →</Text>
+              </Pressable>
+            </View>
+            <AdminGuideEmbed url={ADMIN_GUIDE_URL} />
           </View>
         ) : null}
 
