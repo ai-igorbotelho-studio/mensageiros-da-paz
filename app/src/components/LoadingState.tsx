@@ -6,15 +6,25 @@ const EMBLEM_SIZE = 56;
 const RING_SIZE = EMBLEM_SIZE + 28;
 
 /**
- * Loading: emblema "Chama Tripla" parado no centro, com um anel girando
- * ao redor (em vez do `ActivityIndicator` genérico do sistema) — a
- * pedido do Head (2026-09-21).
+ * Loading: emblema "Chama Tripla" no centro, com um anel girando ao
+ * redor (em vez do `ActivityIndicator` genérico do sistema). A própria
+ * chama pulsa (escala + opacidade) devagar — o anel sozinho, fino nas
+ * bordas, não estava sendo percebido como "tem algo se movendo aqui"
+ * (2026-09-21, a pedido do Head: "o loading symbol... deveria mostrar
+ * movimento").
  */
 export function LoadingState() {
   const spin = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  const entrance = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const loop = Animated.loop(
+    Animated.timing(entrance, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+    const spinLoop = Animated.loop(
       Animated.timing(spin, {
         toValue: 1,
         duration: 1400,
@@ -22,27 +32,52 @@ export function LoadingState() {
         useNativeDriver: true,
       })
     );
-    loop.start();
-    return () => loop.stop();
-  }, [spin]);
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1100,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1100,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    spinLoop.start();
+    pulseLoop.start();
+    return () => {
+      spinLoop.stop();
+      pulseLoop.stop();
+    };
+  }, [spin, pulse, entrance]);
 
   const rotate = spin.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
   });
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
 
   return (
-    <View style={styles.container} accessibilityRole="progressbar">
+    <Animated.View
+      style={[styles.container, { opacity: entrance }]}
+      accessibilityRole="progressbar"
+    >
       <View style={styles.stack}>
         <Animated.View style={[styles.ring, { transform: [{ rotate }] }]} />
-        <Image
+        <Animated.Image
           source={require("../../assets/branding/chama-tripla.png")}
-          style={styles.emblem}
+          style={[styles.emblem, { transform: [{ scale }], opacity }]}
           resizeMode="contain"
           accessibilityLabel="Carregando"
         />
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

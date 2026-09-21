@@ -50,6 +50,10 @@ export function RootNavigator() {
           headerTitleAlign: "center",
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
+          // Cross-fade em vez do slide padrão — some com o "salto" seco
+          // entre páginas (2026-09-21, a pedido do Head).
+          animation: "fade",
+          animationDuration: 180,
           // Cabeçalho fixo "Mensageiros da Paz" em todas as páginas, a
           // pedido do Head (2026-09-21) — substitui os títulos por tela
           // usados antes (nome da subpágina/item). Também funciona como

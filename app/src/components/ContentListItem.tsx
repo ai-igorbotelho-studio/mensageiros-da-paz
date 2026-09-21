@@ -1,7 +1,8 @@
 import React from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { BookIcon } from "@/components/CategoryIcons";
+import { PressableScale } from "@/components/PressableScale";
 import { toDirectFileUrl } from "@/utils/driveUrl";
 import type { ContentItem, StreamingProvider } from "@/types";
 
@@ -54,8 +55,8 @@ export function ContentListItem({ item, onPress }: Props) {
   // layout de duas colunas ficaria vazio à toa nelas.
   const showCover = item.category === "livros";
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    <PressableScale
+      style={styles.card}
       onPress={() => onPress(item)}
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${badge}`}
@@ -83,7 +84,7 @@ export function ContentListItem({ item, onPress }: Props) {
         ) : null}
       </View>
       {badge ? <Text style={styles.badge}>{badge}</Text> : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -99,9 +100,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
-  },
-  cardPressed: {
-    opacity: 0.7,
   },
   cover: {
     width: COVER_SIZE,

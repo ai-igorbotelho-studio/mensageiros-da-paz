@@ -20,14 +20,36 @@
  * Qualquer outra URL (Cloudflare, Dropbox, etc.) passa direto, sem
  * alteração.
  */
+export function extractDriveFileId(url: string): string | null {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) ?? url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return match?.[1] ?? null;
+}
+
 export function toDirectFileUrl(url: string): string {
   if (!url.includes("drive.google.com")) return url;
-
-  const fileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) ?? url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  const fileId = fileIdMatch?.[1];
+  const fileId = extractDriveFileId(url);
   if (!fileId) return url;
-
   return `https://drive.google.com/uc?export=download&id=${fileId}`;
+}
+
+/**
+ * URL do player embutido oficial do Drive (.../file/d/{id}/preview) —
+ * usado pra ÁUDIO hospedado no Drive na versão web, em vez de tentar
+ * tocar via `Audio.Sound` com a URL de `toDirectFileUrl`. Mesmo depois
+ * de trocar pra `export=download`, áudio do Drive continuava sem
+ * tocar (relatado de novo em 2026-09-21) — o endpoint `uc?export=...`
+ * serve o arquivo com `Content-Disposition: attachment`, o que faz o
+ * navegador tentar baixar em vez de reproduzir inline, e quebra
+ * requisições por intervalo (necessárias pra tocar/buscar posição no
+ * áudio). O player embutido do Drive é a própria Google resolvendo
+ * isso — sem CORS, sem download forçado, sem depender de parâmetro de
+ * URL nenhum.
+ */
+export function toGoogleDrivePreviewUrl(url: string): string | null {
+  if (!url.includes("drive.google.com")) return null;
+  const fileId = extractDriveFileId(url);
+  if (!fileId) return null;
+  return `https://drive.google.com/file/d/${fileId}/preview`;
 }
 
 /**

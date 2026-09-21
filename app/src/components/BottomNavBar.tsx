@@ -1,9 +1,10 @@
 import React from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, spacing } from "@/theme/tokens";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
+import { PressableScale } from "@/components/PressableScale";
 import type { ContentCategory, RootStackParamList } from "@/types";
 
 const TABS: Array<{
@@ -44,7 +45,7 @@ export function BottomNavBar({ active }: Props) {
         {TABS.map((tab) => {
           const isActive = tab.category === active;
           return (
-            <Pressable
+            <PressableScale
               key={tab.category}
               style={styles.tab}
               onPress={() => {
@@ -64,7 +65,7 @@ export function BottomNavBar({ active }: Props) {
               <Text style={[styles.label, isActive && styles.labelActive]}>
                 {tab.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>

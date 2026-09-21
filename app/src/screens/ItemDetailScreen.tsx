@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   Image,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,7 +15,12 @@ import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { ErrorState } from "@/components/ErrorState";
 import { SpotifyEmbed } from "@/components/SpotifyEmbed";
 import { BottomNavBar } from "@/components/BottomNavBar";
-import { toDirectFileUrl, toGoogleDocsTextExportUrl } from "@/utils/driveUrl";
+import { DriveAudioEmbed } from "@/components/DriveAudioEmbed";
+import {
+  toDirectFileUrl,
+  toGoogleDocsTextExportUrl,
+  toGoogleDrivePreviewUrl,
+} from "@/utils/driveUrl";
 import type { ContentCategory, RootStackParamList, StreamingProvider } from "@/types";
 
 const CATEGORY_LABEL: Record<ContentCategory, string> = {
@@ -59,6 +65,18 @@ export function ItemDetailScreen({ route, navigation }: Props) {
   const [gdocError, setGdocError] = useState(false);
 
   const isGdoc = item.source === "upload" && item.fileType === "gdoc" && !!item.fileUrl;
+  // Áudio do Google Drive na web: expo-av tentando tocar direto (mesmo
+  // com a URL "direta") falhava de novo (relatado 2026-09-21) porque o
+  // endpoint do Drive força download em vez de streaming inline. O
+  // player embutido oficial do Drive resolve isso sem depender de
+  // nenhum parâmetro de URL — ver toGoogleDrivePreviewUrl.
+  const drivePreviewUrl =
+    Platform.OS === "web" &&
+    item.source === "upload" &&
+    item.fileType === "audio" &&
+    item.fileUrl
+      ? toGoogleDrivePreviewUrl(item.fileUrl)
+      : null;
 
   useEffect(() => {
     if (!isGdoc || !item.fileUrl) return;
@@ -223,7 +241,13 @@ export function ItemDetailScreen({ route, navigation }: Props) {
         />
       ) : null}
 
-      {item.source === "upload" && item.fileType === "audio" && item.fileUrl ? (
+      {item.source === "upload" && item.fileType === "audio" && item.fileUrl && drivePreviewUrl ? (
+        <View style={styles.audioBlock}>
+          <DriveAudioEmbed previewUrl={drivePreviewUrl} />
+        </View>
+      ) : null}
+
+      {item.source === "upload" && item.fileType === "audio" && item.fileUrl && !drivePreviewUrl ? (
         <View style={styles.audioBlock}>
           {playbackError ? (
             <ErrorState

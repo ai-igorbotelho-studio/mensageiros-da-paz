@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/EmptyState";
 import { ContentListItem } from "@/components/ContentListItem";
 import { BottomNavBar } from "@/components/BottomNavBar";
+import { FadeIn } from "@/components/FadeIn";
 import type { ContentCategory, ContentItem, RootStackParamList } from "@/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ContentList">;
@@ -74,20 +75,21 @@ export function ContentListScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        style={styles.content}
-        data={items}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <ContentListItem
-            item={item}
-            onPress={(pressedItem) =>
-              navigation.navigate("ItemDetail", { item: pressedItem })
-            }
-          />
-        )}
-      />
+      <FadeIn style={styles.content}>
+        <FlatList
+          data={items}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <ContentListItem
+              item={item}
+              onPress={(pressedItem) =>
+                navigation.navigate("ItemDetail", { item: pressedItem })
+              }
+            />
+          )}
+        />
+      </FadeIn>
       <BottomNavBar active={category} />
     </View>
   );
