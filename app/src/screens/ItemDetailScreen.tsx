@@ -318,6 +318,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
+    paddingBottom: 100,
   },
   backButton: {
     minHeight: minTouchSize - 8,

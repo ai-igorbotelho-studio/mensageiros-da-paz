@@ -1,49 +1,26 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+import { colors, fonts, spacing } from "@/theme/tokens";
 import { fetchPracticeOfTheWeek } from "@/firebase/firestore";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { BottomNavBar } from "@/components/BottomNavBar";
-import {
-  BookIcon,
-  MusicIcon,
-  PrayerIcon,
-  TextIcon,
-} from "@/components/CategoryIcons";
 import type { RootStackParamList } from "@/types";
 
 const CACHE_KEY = "practice_of_the_week_cache";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
-const OPTIONS: Array<{
-  label: string;
-  category: "oracoes" | "musicas" | "textos" | "livros";
-  Icon: typeof PrayerIcon;
-}> = [
-  { label: "Orações", category: "oracoes", Icon: PrayerIcon },
-  { label: "Músicas", category: "musicas", Icon: MusicIcon },
-  { label: "Textos", category: "textos", Icon: TextIcon },
-  { label: "Livros", category: "livros", Icon: BookIcon },
-];
-
 /**
- * Home: Prática da Semana + os quatro botões de categoria na mesma
- * página (Orações/Músicas/Textos/Livros), a pedido do Head (2026-09-21) —
- * substitui o passo intermediário do hub "Mensageiros" por um único
- * botão. Ver docs/UX-ARCHITECTURE.md seção 1.1 e 5 (o que NÃO entra aqui).
- *
- * Layout espalhado pela altura da página (2026-09-21, a pedido do
- * Head): emblema fixo perto do topo, texto da prática centralizado
- * numa área fixa no meio, botões numa área fixa perto do rodapé —
- * três blocos com `flex` próprios (não tudo empilhado/compacto no
- * centro), com fontes e botões pequenos o bastante para caber sem
- * cortar.
+ * Home: só a Prática da Semana. Os 4 botões grandes de categoria
+ * (Orações/Músicas/Textos/Livros) foram removidos daqui (2026-09-21, a
+ * pedido do Head) — duplicavam a mesma navegação que a `BottomNavBar`
+ * já oferece flutuando por cima de toda página, inclusive esta. Manter
+ * os dois era confuso (dois menus diferentes pra mesma ação).
  */
-export function HomeScreen({ navigation }: Props) {
+export function HomeScreen() {
   const [text, setText] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -106,28 +83,7 @@ export function HomeScreen({ navigation }: Props) {
             {text || "Nenhuma prática publicada no momento."}
           </Text>
         </View>
-        <View style={styles.buttonArea}>
-          {OPTIONS.map((option) => (
-            <Pressable
-              key={option.category}
-              style={({ pressed }) => [
-                styles.button,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={() =>
-                navigation.navigate("ContentList", {
-                  category: option.category,
-                  title: option.label,
-                })
-              }
-              accessibilityRole="button"
-              accessibilityLabel={option.label}
-            >
-              <option.Icon size={15} color={colors.surface} />
-              <Text style={styles.buttonText}>{option.label}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <View style={styles.spacerArea} />
       </View>
       <BottomNavBar />
     </View>
@@ -181,37 +137,10 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     alignSelf: "center",
   },
-  buttonArea: {
+  // Reserva o espaço que os botões ocupavam antes, pra manter o texto
+  // da prática na mesma posição vertical de antes — a navegação real
+  // agora é só a BottomNavBar flutuante.
+  spacerArea: {
     flex: 2,
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingBottom: spacing.sm,
-  },
-  button: {
-    minHeight: minTouchSize - 8,
-    width: "100%",
-    maxWidth: 200,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    backgroundColor: colors.primary,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    paddingVertical: 6,
-    paddingHorizontal: spacing.md,
-  },
-  buttonPressed: {
-    opacity: 0.85,
-  },
-  buttonText: {
-    fontFamily: fonts.bodyFallback,
-    fontWeight: "600",
-    fontSize: 13,
-    letterSpacing: 0.2,
-    color: colors.surface,
-    textAlign: "center",
   },
 });

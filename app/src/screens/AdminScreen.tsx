@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Linking,
   Pressable,
   ScrollView,
@@ -54,6 +55,13 @@ import type {
  * aceita um link de plataforma de streaming (Spotify, YouTube Music,
  * SoundCloud, Apple Music) em vez de arquivo — ver
  * DECISIONS.md, "Streaming: suporte a múltiplas plataformas de música".
+ *
+ * Reestruturação de UX (2026-09-21, spec do ux-architect subagent): a
+ * tela deixou de ser uma ScrollView única e virou 3 abas (Prática da
+ * Semana / Biblioteca / Novo ou Editar item), a lista de itens virou um
+ * accordion com reordenação por setas, ações ganharam confirmação e
+ * feedback consistentes via toast, e a importação de planilha virou um
+ * modal em vez de um painel que empurra o layout.
  */
 
 const CATEGORIES: ContentCategory[] = ["oracoes", "musicas", "textos", "livros"];
@@ -123,6 +131,14 @@ const EMPTY_FORM: ItemFormValues = {
   order: 1,
   published: true,
 };
+
+type Tab = "practice" | "library" | "form";
+
+const TABS: Array<{ key: Tab; label: string }> = [
+  { key: "practice", label: "Prática da Semana" },
+  { key: "library", label: "Biblioteca" },
+  { key: "form", label: "Novo item" },
+];
 
 export function AdminScreen() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
@@ -198,14 +214,67 @@ export function AdminScreen() {
   return <AdminDashboard user={user} />;
 }
 
+type ToastState = { message: string; kind: "success" | "error" } | null;
+
+function Toast({ toast }: { toast: ToastState }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!toast) return;
+    opacity.setValue(0);
+    Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    const timer = setTimeout(() => {
+      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    }, 2300);
+    return () => clearTimeout(timer);
+  }, [toast, opacity]);
+
+  if (!toast) return null;
+
+  return (
+    <Animated.View
+      style={[
+        styles.toast,
+        toast.kind === "error" ? styles.toastError : styles.toastSuccess,
+        { opacity },
+      ]}
+      pointerEvents="none"
+    >
+      <Text style={styles.toastText}>{toast.message}</Text>
+    </Animated.View>
+  );
+}
+
+function Chevron({ expanded }: { expanded: boolean }) {
+  return (
+    <Text style={[styles.chevron, expanded && styles.chevronExpanded]}>›</Text>
+  );
+}
+
 function AdminDashboard({ user }: { user: User }) {
+  const [activeTab, setActiveTab] = useState<Tab>("practice");
+  const [toast, setToast] = useState<ToastState>(null);
+
+  function notify(message: string, kind: "success" | "error" = "success") {
+    setToast({ message, kind });
+  }
+
   const [practiceText, setPracticeText] = useState("");
   const [practiceInspiration, setPracticeInspiration] = useState("");
   const [practiceLoading, setPracticeLoading] = useState(true);
-  const [practiceSaved, setPracticeSaved] = useState(false);
+
   const [category, setCategory] = useState<ContentCategory>("livros");
+  const [categoryCounts, setCategoryCounts] = useState<Record<ContentCategory, number>>({
+    oracoes: 0,
+    musicas: 0,
+    textos: 0,
+    livros: 0,
+  });
   const [items, setItems] = useState<ContentItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const [form, setForm] = useState<ItemFormValues>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -231,6 +300,23 @@ function AdminDashboard({ user }: { user: User }) {
       .finally(() => setPracticeLoading(false));
   }, []);
 
+  function refreshCounts() {
+    Promise.all(CATEGORIES.map((c) => adminListItemsByCategory(c)))
+      .then((results) => {
+        const next = {} as Record<ContentCategory, number>;
+        CATEGORIES.forEach((c, i) => {
+          next[c] = results[i].length;
+        });
+        setCategoryCounts(next);
+      })
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    refreshCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const loadItems = React.useCallback(() => {
     setItemsLoading(true);
     adminListItemsByCategory(category)
@@ -241,15 +327,16 @@ function AdminDashboard({ user }: { user: User }) {
 
   useEffect(() => {
     setConfirmDeleteAll(false);
+    setExpandedId(null);
+    setConfirmDeleteId(null);
     loadItems();
-    // A categoria escolhida na "Organizar Biblioteca" (topo) e a
-    // categoria do formulário "Novo item" (abaixo) eram estados
-    // independentes: trocar a aba de cima não sincronizava o formulário,
-    // então um item podia ser salvo na categoria antiga por engano
-    // (bug relatado 2026-09-21: música publicada como livro). Ao trocar
-    // de aba, sempre reabre o formulário limpo já na categoria certa —
-    // a menos que um item esteja sendo editado, para não perder o que
-    // está sendo alterado.
+    // A categoria escolhida na Biblioteca e a categoria do formulário
+    // "Novo item" eram estados independentes: trocar a categoria não
+    // sincronizava o formulário, então um item podia ser salvo na
+    // categoria antiga por engano (bug relatado 2026-09-21: música
+    // publicada como livro). Ao trocar de categoria, sempre reabre o
+    // formulário limpo já na categoria certa — a menos que um item
+    // esteja sendo editado, para não perder o que está sendo alterado.
     if (editingId === null) {
       setForm({ ...EMPTY_FORM, category });
     }
@@ -257,17 +344,16 @@ function AdminDashboard({ user }: { user: User }) {
   }, [category, loadItems]);
 
   async function savePractice() {
-    setPracticeSaved(false);
     try {
       await adminSetPracticeOfTheWeek(practiceText, practiceInspiration, user.email ?? "admin");
-      setPracticeSaved(true);
+      notify("Prática da semana salva.");
       syncPracticeToSheet({
         practiceText,
         inspiration: practiceInspiration,
         publishedBy: user.email ?? "admin",
       });
     } catch {
-      // erro silencioso simples — admin interno, baixo volume de uso
+      notify("Não foi possível salvar a prática. Tente novamente.", "error");
     }
   }
 
@@ -286,11 +372,14 @@ function AdminDashboard({ user }: { user: User }) {
       order: item.order,
       published: item.published,
     });
+    setActiveTab("form");
   }
 
   function startNew() {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, category, order: items.length + 1 });
+    setFormError(null);
+    setActiveTab("form");
   }
 
   async function submitForm() {
@@ -311,19 +400,55 @@ function AdminDashboard({ user }: { user: User }) {
     try {
       if (editingId) {
         await adminUpdateItem(editingId, form);
+        notify("Item atualizado.");
       } else {
         await adminCreateItem(form, user.email ?? "admin");
+        notify("Item adicionado.");
       }
-      startNew();
+      setCategory(form.category);
+      setEditingId(null);
+      setForm({ ...EMPTY_FORM, category: form.category });
       loadItems();
+      refreshCounts();
+      setActiveTab("library");
     } catch {
       setFormError("Não foi possível salvar. Tente novamente.");
+      notify("Não foi possível salvar o item.", "error");
     }
   }
 
   async function removeItem(id: string) {
-    await adminDeleteItem(id);
-    loadItems();
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      return;
+    }
+    try {
+      await adminDeleteItem(id);
+      notify("Item excluído.");
+      loadItems();
+      refreshCounts();
+    } catch {
+      notify("Não foi possível excluir o item.", "error");
+    } finally {
+      setConfirmDeleteId(null);
+    }
+  }
+
+  async function moveItem(item: ContentItem, direction: -1 | 1) {
+    const sorted = [...items].sort((a, b) => a.order - b.order);
+    const index = sorted.findIndex((i) => i.id === item.id);
+    const swapWith = sorted[index + direction];
+    if (!swapWith) return;
+    try {
+      await Promise.all([
+        adminUpdateItem(item.id, { ...formValuesFromItem(item), order: swapWith.order }),
+        adminUpdateItem(swapWith.id, { ...formValuesFromItem(swapWith), order: item.order }),
+      ]);
+      notify("Ordem atualizada.");
+      loadItems();
+    } catch {
+      notify("Não foi possível reordenar. Tente novamente.", "error");
+    }
   }
 
   async function removeAllInCategory() {
@@ -336,7 +461,9 @@ function AdminDashboard({ user }: { user: User }) {
       for (const item of items) {
         await adminDeleteItem(item.id);
       }
+      notify(`Todos os itens de ${CATEGORY_LABEL[category]} foram apagados.`);
       loadItems();
+      refreshCounts();
     } finally {
       setDeletingAll(false);
       setConfirmDeleteAll(false);
@@ -462,14 +589,18 @@ function AdminDashboard({ user }: { user: User }) {
           failed ? `, ${failed} com erro` : ""
         }.`
       );
+      notify(`${created} item(ns) importado(s) para ${CATEGORY_LABEL[category]}.`);
       loadItems();
+      refreshCounts();
     } finally {
       setImportRunning(false);
     }
   }
 
+  const sortedItems = [...items].sort((a, b) => a.order - b.order);
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <View style={styles.screen}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Admin</Text>
         <Pressable onPress={() => adminSignOut()} accessibilityRole="button">
@@ -478,460 +609,595 @@ function AdminDashboard({ user }: { user: User }) {
       </View>
       <Text style={styles.helper}>Logado como {user.email}</Text>
 
-      {/* Prática da Semana */}
-      <Text style={styles.sectionTitle}>Prática da Semana</Text>
-      <Pressable
-        style={styles.sheetButton}
-        onPress={() => Linking.openURL(PRACTICE_SHEET_URL)}
-        accessibilityRole="link"
-      >
-        <Text style={styles.sheetButtonText}>Índice de Práticas (planilha) →</Text>
-      </Pressable>
-      {practiceLoading ? (
-        <Text style={styles.helper}>Carregando…</Text>
-      ) : (
-        <>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={practiceText}
-            onChangeText={(t) => {
-              setPracticeText(t);
-              setPracticeSaved(false);
-            }}
-            multiline
-            placeholder="Texto da prática desta semana"
-            placeholderTextColor={colors.textSecondary}
-          />
-          <Text style={styles.fieldHint}>
-            Inspiração (opcional — fica só no registro interno/planilha, não
-            aparece no app)
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={practiceInspiration}
-            onChangeText={(t) => {
-              setPracticeInspiration(t);
-              setPracticeSaved(false);
-            }}
-            placeholder="Ex.: versículo, autor, referência"
-            placeholderTextColor={colors.textSecondary}
-          />
-          <Pressable style={styles.primaryButton} onPress={savePractice} accessibilityRole="button">
-            <Text style={styles.primaryButtonText}>Salvar</Text>
-          </Pressable>
-          {practiceSaved ? <Text style={styles.success}>Salvo.</Text> : null}
-        </>
-      )}
-
-      {/* Organizar Biblioteca: tudo que está publicado (e rascunhos) por categoria */}
-      <Text style={styles.sectionTitle}>Organizar Biblioteca</Text>
-      <Text style={styles.helper}>
-        Escolha uma categoria para ver tudo que está publicado (e
-        rascunhos, marcados como "(rascunho)") nela.
-      </Text>
-
-      <View style={styles.categoryRow}>
-        {CATEGORIES.map((c) => (
+      <View style={styles.tabRow}>
+        {TABS.map((tab) => (
           <Pressable
-            key={c}
-            style={[styles.categoryChip, category === c && styles.categoryChipActive]}
-            onPress={() => setCategory(c)}
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+            onPress={() => {
+              if (tab.key === "form" && editingId === null) startNew();
+              else setActiveTab(tab.key);
+            }}
             accessibilityRole="button"
+            accessibilityState={{ selected: activeTab === tab.key }}
           >
-            <Text
-              style={[
-                styles.categoryChipText,
-                category === c && styles.categoryChipTextActive,
-              ]}
-            >
-              {CATEGORY_LABEL[c]}
+            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+              {tab.key === "form" && editingId ? "Editar item" : tab.label}
             </Text>
           </Pressable>
         ))}
       </View>
 
-      <View style={styles.libraryCard}>
-        <View style={styles.libraryCardHeader}>
-          <Text style={styles.libraryCardTitle}>{CATEGORY_LABEL[category]}</Text>
-          <View style={styles.libraryCardButtonsRow}>
-            <Pressable
-              style={styles.sheetButton}
-              onPress={() => Linking.openURL(CATEGORY_SHEET_URL[category])}
-              accessibilityRole="link"
-            >
-              <Text style={styles.sheetButtonText}>
-                Índice de {CATEGORY_LABEL[category]} (planilha) →
-              </Text>
-            </Pressable>
-            <Pressable
-              style={styles.importButton}
-              onPress={openImport}
-              accessibilityRole="button"
-            >
-              <Text style={styles.importButtonText}>Importar da planilha</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {importOpen ? (
-          <View style={styles.importPanel}>
-            <View style={styles.headerRow}>
-              <Text style={styles.libraryCardTitle}>
-                Importar {CATEGORY_LABEL[category]}
-              </Text>
-              <Pressable onPress={closeImport} accessibilityRole="button">
-                <Text style={styles.link}>Fechar</Text>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        {activeTab === "practice" ? (
+          <View style={styles.libraryCard}>
+            <View style={styles.libraryCardHeader}>
+              <Text style={styles.libraryCardTitle}>Prática da Semana</Text>
+              <Pressable
+                style={styles.sheetButton}
+                onPress={() => Linking.openURL(PRACTICE_SHEET_URL)}
+                accessibilityRole="link"
+              >
+                <Text style={styles.sheetButtonText}>Índice de Práticas (planilha) →</Text>
               </Pressable>
             </View>
-
-            {importLoading ? (
-              <Text style={styles.helper}>Lendo a planilha…</Text>
-            ) : importError ? (
-              <Text style={styles.error}>{importError}</Text>
-            ) : importRows.length === 0 ? (
-              <Text style={styles.helper}>
-                Nenhuma linha encontrada nessa planilha.
-              </Text>
+            {practiceLoading ? (
+              <Text style={styles.helper}>Carregando…</Text>
             ) : (
               <>
+                <Text style={styles.fieldHint}>Texto exibido no app</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={practiceText}
+                  onChangeText={setPracticeText}
+                  multiline
+                  placeholder="Texto da prática desta semana"
+                  placeholderTextColor={colors.textSecondary}
+                />
                 <Text style={styles.fieldHint}>
-                  Toque em cada coluna abaixo pra escolher o que ela é
-                  (título, descrição/autor, link, etc). Já tentamos
-                  adivinhar pelo nome da coluna.
+                  Inspiração (opcional — fica só no registro interno/planilha, não
+                  aparece no app)
                 </Text>
-                <View style={styles.categoryRow}>
-                  {importHeaders.map((header, columnIndex) => (
-                    <Pressable
-                      key={`${header}-${columnIndex}`}
-                      style={[
-                        styles.categoryChip,
-                        importMapping[columnIndex] !== "ignore" &&
-                          styles.categoryChipActive,
-                      ]}
-                      onPress={() => cycleMapping(columnIndex)}
-                      accessibilityRole="button"
-                    >
-                      <Text
-                        style={[
-                          styles.categoryChipText,
-                          importMapping[columnIndex] !== "ignore" &&
-                            styles.categoryChipTextActive,
-                        ]}
-                      >
-                        {header || `Coluna ${columnIndex + 1}`}:{" "}
-                        {IMPORT_FIELD_LABEL[importMapping[columnIndex] ?? "ignore"]}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                <Text style={styles.fieldHint}>
-                  Selecione as linhas que quer importar ({importSelected.size} de{" "}
-                  {importRows.length}):
-                </Text>
-                {importRows.map((row, rowIndex) => {
-                  const title = valueForField(row, "title") || "(sem título)";
-                  const description = valueForField(row, "description");
-                  return (
-                    <Pressable
-                      key={rowIndex}
-                      style={styles.importRow}
-                      onPress={() => toggleRowSelected(rowIndex)}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: importSelected.has(rowIndex) }}
-                    >
-                      <Switch
-                        value={importSelected.has(rowIndex)}
-                        onValueChange={() => toggleRowSelected(rowIndex)}
-                        trackColor={{ false: colors.textSecondary, true: colors.primaryLight }}
-                        thumbColor={importSelected.has(rowIndex) ? colors.primary : colors.surface}
-                      />
-                      <View style={styles.itemTextColumn}>
-                        <Text style={styles.itemTitle}>{title}</Text>
-                        {description ? (
-                          <Text style={styles.itemDescription}>{description}</Text>
-                        ) : null}
-                      </View>
-                    </Pressable>
-                  );
-                })}
-
-                {importResult ? (
-                  <Text style={styles.success}>{importResult}</Text>
-                ) : null}
-
-                <Pressable
-                  style={[
-                    styles.primaryButton,
-                    (importRunning || importSelected.size === 0) && styles.buttonDisabled,
-                  ]}
-                  onPress={runImport}
-                  disabled={importRunning || importSelected.size === 0}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.primaryButtonText}>
-                    {importRunning
-                      ? "Importando…"
-                      : `Importar ${importSelected.size} selecionado(s)`}
-                  </Text>
+                <TextInput
+                  style={styles.input}
+                  value={practiceInspiration}
+                  onChangeText={setPracticeInspiration}
+                  placeholder="Ex.: versículo, autor, referência"
+                  placeholderTextColor={colors.textSecondary}
+                />
+                <Pressable style={styles.primaryButton} onPress={savePractice} accessibilityRole="button">
+                  <Text style={styles.primaryButtonText}>Salvar</Text>
                 </Pressable>
               </>
             )}
           </View>
         ) : null}
 
-        {!itemsLoading && items.length > 0 ? (
-          <Pressable
-            style={[styles.dangerButton, deletingAll && styles.buttonDisabled]}
-            onPress={removeAllInCategory}
-            disabled={deletingAll}
-            accessibilityRole="button"
-          >
-            <Text style={styles.dangerButtonText}>
-              {deletingAll
-                ? "Apagando…"
-                : confirmDeleteAll
-                  ? `Confirmar: apagar ${items.length} itens de ${CATEGORY_LABEL[category]}?`
-                  : `Apagar todos de ${CATEGORY_LABEL[category]} (${items.length})`}
+        {activeTab === "library" ? (
+          <>
+            <Text style={styles.helper}>
+              Escolha uma categoria para ver tudo que está publicado (e
+              rascunhos, marcados como "(rascunho)") nela.
             </Text>
-          </Pressable>
-        ) : null}
 
-        {itemsLoading ? (
-          <Text style={styles.helper}>Carregando…</Text>
-        ) : items.length === 0 ? (
-          <Text style={styles.helper}>Nenhum item cadastrado nesta categoria.</Text>
-        ) : (
-          items.map((item) => (
-            <View key={item.id} style={styles.itemRow}>
-              <View style={styles.itemTextColumn}>
-                <Text style={styles.itemTitle}>
-                  {item.title} {item.published ? "" : "(rascunho)"}
-                </Text>
-                {item.description ? (
-                  <Text style={styles.itemDescription}>{item.description}</Text>
-                ) : null}
-                <Text style={styles.itemMeta}>
-                  {item.source === "streaming"
-                    ? STREAMING_PROVIDER_LABEL[item.streamingProvider ?? "other"]
-                    : item.fileType?.toUpperCase()}{" "}
-                  · ordem {item.order}
-                </Text>
-              </View>
-              <Pressable onPress={() => startEdit(item)} accessibilityRole="button">
-                <Text style={styles.link}>Editar</Text>
-              </Pressable>
-              <Pressable onPress={() => removeItem(item.id)} accessibilityRole="button">
-                <Text style={styles.linkDanger}>Excluir</Text>
-              </Pressable>
+            <View style={styles.categoryRow}>
+              {CATEGORIES.map((c) => (
+                <Pressable
+                  key={c}
+                  style={[styles.categoryChip, category === c && styles.categoryChipActive]}
+                  onPress={() => setCategory(c)}
+                  accessibilityRole="button"
+                >
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      category === c && styles.categoryChipTextActive,
+                    ]}
+                  >
+                    {CATEGORY_LABEL[c]} ({categoryCounts[c]})
+                  </Text>
+                </Pressable>
+              ))}
             </View>
-          ))
-        )}
-      </View>
 
-      {/* Formulário de item */}
-      <Text style={styles.sectionTitle}>
-        {editingId ? "Editar item" : "Novo item"}
-      </Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Título"
-        placeholderTextColor={colors.textSecondary}
-        value={form.title}
-        onChangeText={(title) => setForm((f) => ({ ...f, title }))}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Descrição (ex: Autor · Ano)"
-        placeholderTextColor={colors.textSecondary}
-        value={form.description}
-        onChangeText={(description) => setForm((f) => ({ ...f, description }))}
-      />
+            <View style={styles.libraryCard}>
+              <View style={styles.libraryCardHeader}>
+                <Text style={styles.libraryCardTitle}>{CATEGORY_LABEL[category]}</Text>
+                <View style={styles.libraryCardButtonsRow}>
+                  <Pressable
+                    style={styles.sheetButton}
+                    onPress={() => Linking.openURL(CATEGORY_SHEET_URL[category])}
+                    accessibilityRole="link"
+                  >
+                    <Text style={styles.sheetButtonText}>
+                      Índice de {CATEGORY_LABEL[category]} (planilha) →
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.importButton}
+                    onPress={openImport}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.importButtonText}>Importar da planilha</Text>
+                  </Pressable>
+                </View>
+              </View>
 
-      <View style={styles.categoryRow}>
-        {CATEGORIES.map((c) => (
-          <Pressable
-            key={c}
-            style={[styles.categoryChip, form.category === c && styles.categoryChipActive]}
-            onPress={() => setForm((f) => ({ ...f, category: c }))}
-            accessibilityRole="button"
-          >
-            <Text
-              style={[
-                styles.categoryChipText,
-                form.category === c && styles.categoryChipTextActive,
-              ]}
-            >
-              {CATEGORY_LABEL[c]}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Text style={styles.fieldHint}>
-        Texto direto (opcional — para orações/textos exibidos na hora, sem
-        precisar de arquivo)
-      </Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Cole aqui o texto completo, se houver"
-        placeholderTextColor={colors.textSecondary}
-        value={form.text}
-        onChangeText={(text) => setForm((f) => ({ ...f, text }))}
-        multiline
-      />
-
-      <View style={styles.categoryRow}>
-        {(["upload", "streaming"] as ContentSource[]).map((s) => (
-          <Pressable
-            key={s}
-            style={[styles.categoryChip, form.source === s && styles.categoryChipActive]}
-            onPress={() => setForm((f) => ({ ...f, source: s }))}
-            accessibilityRole="button"
-          >
-            <Text
-              style={[
-                styles.categoryChipText,
-                form.source === s && styles.categoryChipTextActive,
-              ]}
-            >
-              {s === "upload" ? "Arquivo (qualquer link direto)" : "Streaming de música"}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {form.source === "upload" ? (
-        <>
-          <Text style={styles.fieldHint}>
-            Cole o link direto do arquivo — qualquer provedor de cloud
-            funciona (Google Drive, Dropbox, OneDrive, Cloudflare Pages,
-            etc.), desde que o link seja acessível publicamente.
-          </Text>
-          <TextInput
-            style={styles.input}
-            placeholder="https://drive.google.com/... ou https://mensageiros-da-paz.pages.dev/content/..."
-            placeholderTextColor={colors.textSecondary}
-            value={form.fileUrl}
-            onChangeText={(fileUrl) => setForm((f) => ({ ...f, fileUrl }))}
-            autoCapitalize="none"
-          />
-          <View style={styles.categoryRow}>
-            {(["pdf", "image", "audio", "gdoc"] as FileType[]).map((ft) => (
               <Pressable
-                key={ft}
-                style={[styles.categoryChip, form.fileType === ft && styles.categoryChipActive]}
-                onPress={() => setForm((f) => ({ ...f, fileType: ft }))}
+                style={styles.primaryButtonWide}
+                onPress={startNew}
                 accessibilityRole="button"
               >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    form.fileType === ft && styles.categoryChipTextActive,
-                  ]}
-                >
-                  {ft.toUpperCase()}
-                </Text>
+                <Text style={styles.primaryButtonText}>+ Novo item em {CATEGORY_LABEL[category]}</Text>
               </Pressable>
-            ))}
-          </View>
-          {form.fileType === "audio" && form.fileUrl.includes("drive.google.com") ? (
-            <Text style={styles.fieldHint}>
-              Link do Google Drive detectado: o app converte automaticamente
-              para o formato de reprodução direta. Funciona bem pra arquivos
-              pequenos/médios; se o áudio não tocar, o mais confiável é
-              hospedar no Cloudflare Pages (pasta content-src do repositório).
-            </Text>
-          ) : null}
-          {form.fileType === "gdoc" ? (
-            <Text style={styles.fieldHint}>
-              Cole o link de um Google Doc (não Drive comum) — ex.:
-              docs.google.com/document/d/.../edit. O app busca o texto
-              direto do documento toda vez que alguém abre o item, então
-              editar o Doc atualiza o app automaticamente. O documento
-              precisa estar compartilhado como "Qualquer pessoa com o link".
-            </Text>
-          ) : null}
-        </>
-      ) : (
-        <>
-          <Text style={styles.fieldHint}>
-            Escolha a plataforma e cole o link da faixa/álbum/playlist. No
-            Spotify o player toca embutido no app; nas outras, o link abre
-            na plataforma original.
-          </Text>
-          <View style={styles.categoryRow}>
-            {STREAMING_PROVIDERS.map((p) => (
-              <Pressable
-                key={p}
-                style={[
-                  styles.categoryChip,
-                  form.streamingProvider === p && styles.categoryChipActive,
-                ]}
-                onPress={() => setForm((f) => ({ ...f, streamingProvider: p }))}
-                accessibilityRole="button"
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    form.streamingProvider === p && styles.categoryChipTextActive,
-                  ]}
-                >
-                  {STREAMING_PROVIDER_LABEL[p]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <TextInput
-            style={styles.input}
-            placeholder="https://open.spotify.com/track/... (ou link da plataforma escolhida)"
-            placeholderTextColor={colors.textSecondary}
-            value={form.streamingUrl}
-            onChangeText={(streamingUrl) => setForm((f) => ({ ...f, streamingUrl }))}
-            autoCapitalize="none"
-          />
-        </>
-      )}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Ordem (número)"
-        placeholderTextColor={colors.textSecondary}
-        value={String(form.order)}
-        onChangeText={(v) => setForm((f) => ({ ...f, order: Number(v) || 0 }))}
-        keyboardType="numeric"
-      />
+              <View style={styles.divider} />
 
-      <View style={styles.row}>
-        <Text style={styles.label}>Publicado</Text>
-        <Switch
-          value={form.published}
-          onValueChange={(published) => setForm((f) => ({ ...f, published }))}
-          trackColor={{ false: colors.textSecondary, true: colors.primaryLight }}
-          thumbColor={form.published ? colors.primary : colors.surface}
-        />
-      </View>
+              {itemsLoading ? (
+                <>
+                  <View style={styles.skeletonRow} />
+                  <View style={styles.skeletonRow} />
+                  <View style={styles.skeletonRow} />
+                </>
+              ) : sortedItems.length === 0 ? (
+                <Text style={styles.helper}>Nenhum item cadastrado nesta categoria.</Text>
+              ) : (
+                sortedItems.map((item, index) => {
+                  const expanded = expandedId === item.id;
+                  return (
+                    <View key={item.id} style={styles.accordionCard}>
+                      <Pressable
+                        style={styles.accordionHeader}
+                        onPress={() => setExpandedId(expanded ? null : item.id)}
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded }}
+                      >
+                        <View style={styles.itemTextColumn}>
+                          <Text style={styles.itemTitle}>{item.title}</Text>
+                          <View style={styles.badgeRow}>
+                            <View
+                              style={[
+                                styles.statusBadge,
+                                item.published ? styles.statusBadgePublished : styles.statusBadgeDraft,
+                              ]}
+                            >
+                              <Text style={styles.statusBadgeText}>
+                                {item.published ? "Publicado" : "Rascunho"}
+                              </Text>
+                            </View>
+                            <Text style={styles.itemMeta}>ordem {item.order}</Text>
+                          </View>
+                        </View>
+                        <Chevron expanded={expanded} />
+                      </Pressable>
 
-      {formError ? <Text style={styles.error}>{formError}</Text> : null}
+                      {expanded ? (
+                        <View style={styles.accordionBody}>
+                          {item.description ? (
+                            <Text style={styles.itemDescription}>{item.description}</Text>
+                          ) : null}
+                          <Text style={styles.itemMeta}>
+                            {item.source === "streaming"
+                              ? STREAMING_PROVIDER_LABEL[item.streamingProvider ?? "other"]
+                              : item.fileType?.toUpperCase()}
+                          </Text>
 
-      <View style={styles.formButtonsRow}>
-        <Pressable style={styles.primaryButton} onPress={submitForm} accessibilityRole="button">
-          <Text style={styles.primaryButtonText}>{editingId ? "Salvar alterações" : "Adicionar item"}</Text>
-        </Pressable>
-        {editingId ? (
-          <Pressable style={styles.secondaryButton} onPress={startNew} accessibilityRole="button">
-            <Text style={styles.secondaryButtonText}>Cancelar</Text>
-          </Pressable>
+                          <View style={styles.accordionActionsRow}>
+                            <Pressable
+                              style={[styles.reorderButton, index === 0 && styles.buttonDisabled]}
+                              onPress={() => moveItem(item, -1)}
+                              disabled={index === 0}
+                              accessibilityRole="button"
+                              accessibilityLabel="Mover para cima"
+                            >
+                              <Text style={styles.reorderButtonText}>↑</Text>
+                            </Pressable>
+                            <Pressable
+                              style={[
+                                styles.reorderButton,
+                                index === sortedItems.length - 1 && styles.buttonDisabled,
+                              ]}
+                              onPress={() => moveItem(item, 1)}
+                              disabled={index === sortedItems.length - 1}
+                              accessibilityRole="button"
+                              accessibilityLabel="Mover para baixo"
+                            >
+                              <Text style={styles.reorderButtonText}>↓</Text>
+                            </Pressable>
+                            <View style={styles.accordionActionsSpacer} />
+                            <Pressable onPress={() => startEdit(item)} accessibilityRole="button">
+                              <Text style={styles.link}>Editar</Text>
+                            </Pressable>
+                            <Pressable onPress={() => removeItem(item.id)} accessibilityRole="button">
+                              <Text style={styles.linkDanger}>
+                                {confirmDeleteId === item.id ? "Confirmar exclusão" : "Excluir"}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })
+              )}
+
+              {!itemsLoading && sortedItems.length > 0 ? (
+                <>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={[styles.dangerButton, deletingAll && styles.buttonDisabled]}
+                    onPress={removeAllInCategory}
+                    disabled={deletingAll}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.dangerButtonText}>
+                      {deletingAll
+                        ? "Apagando…"
+                        : confirmDeleteAll
+                          ? `Confirmar: apagar ${items.length} itens de ${CATEGORY_LABEL[category]}?`
+                          : `Apagar todos de ${CATEGORY_LABEL[category]} (${items.length})`}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
+            </View>
+          </>
         ) : null}
-      </View>
-    </ScrollView>
+
+        {activeTab === "form" ? (
+          <>
+            <View style={styles.libraryCard}>
+              <Text style={styles.formGroupTitle}>Identificação</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Título"
+                placeholderTextColor={colors.textSecondary}
+                value={form.title}
+                onChangeText={(title) => setForm((f) => ({ ...f, title }))}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Descrição (ex: Autor · Ano)"
+                placeholderTextColor={colors.textSecondary}
+                value={form.description}
+                onChangeText={(description) => setForm((f) => ({ ...f, description }))}
+              />
+              <View style={styles.categoryRow}>
+                {CATEGORIES.map((c) => (
+                  <Pressable
+                    key={c}
+                    style={[styles.categoryChip, form.category === c && styles.categoryChipActive]}
+                    onPress={() => setForm((f) => ({ ...f, category: c }))}
+                    accessibilityRole="button"
+                  >
+                    <Text
+                      style={[
+                        styles.categoryChipText,
+                        form.category === c && styles.categoryChipTextActive,
+                      ]}
+                    >
+                      {CATEGORY_LABEL[c]}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.libraryCard}>
+              <Text style={styles.formGroupTitle}>Conteúdo</Text>
+              <Text style={styles.fieldHint}>
+                Texto direto (opcional — para orações/textos exibidos na hora, sem
+                precisar de arquivo)
+              </Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Cole aqui o texto completo, se houver"
+                placeholderTextColor={colors.textSecondary}
+                value={form.text}
+                onChangeText={(text) => setForm((f) => ({ ...f, text }))}
+                multiline
+              />
+
+              <View style={styles.categoryRow}>
+                {(["upload", "streaming"] as ContentSource[]).map((s) => (
+                  <Pressable
+                    key={s}
+                    style={[styles.categoryChip, form.source === s && styles.categoryChipActive]}
+                    onPress={() => setForm((f) => ({ ...f, source: s }))}
+                    accessibilityRole="button"
+                  >
+                    <Text
+                      style={[
+                        styles.categoryChipText,
+                        form.source === s && styles.categoryChipTextActive,
+                      ]}
+                    >
+                      {s === "upload" ? "Arquivo (qualquer link direto)" : "Streaming de música"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {form.source === "upload" ? (
+                <>
+                  <Text style={styles.fieldHint}>
+                    Cole o link direto do arquivo — qualquer provedor de cloud
+                    funciona (Google Drive, Dropbox, OneDrive, Cloudflare Pages,
+                    etc.), desde que o link seja acessível publicamente.
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="https://drive.google.com/... ou https://mensageiros-da-paz.pages.dev/content/..."
+                    placeholderTextColor={colors.textSecondary}
+                    value={form.fileUrl}
+                    onChangeText={(fileUrl) => setForm((f) => ({ ...f, fileUrl }))}
+                    autoCapitalize="none"
+                  />
+                  <View style={styles.categoryRow}>
+                    {(["pdf", "image", "audio", "gdoc"] as FileType[]).map((ft) => (
+                      <Pressable
+                        key={ft}
+                        style={[styles.categoryChip, form.fileType === ft && styles.categoryChipActive]}
+                        onPress={() => setForm((f) => ({ ...f, fileType: ft }))}
+                        accessibilityRole="button"
+                      >
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            form.fileType === ft && styles.categoryChipTextActive,
+                          ]}
+                        >
+                          {ft.toUpperCase()}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {form.fileType === "audio" && form.fileUrl.includes("drive.google.com") ? (
+                    <Text style={styles.fieldHint}>
+                      Link do Google Drive detectado: o app converte automaticamente
+                      para o formato de reprodução direta. Funciona bem pra arquivos
+                      pequenos/médios; se o áudio não tocar, o mais confiável é
+                      hospedar no Cloudflare Pages (pasta content-src do repositório).
+                    </Text>
+                  ) : null}
+                  {form.fileType === "gdoc" ? (
+                    <Text style={styles.fieldHint}>
+                      Cole o link de um Google Doc (não Drive comum) — ex.:
+                      docs.google.com/document/d/.../edit. O app busca o texto
+                      direto do documento toda vez que alguém abre o item, então
+                      editar o Doc atualiza o app automaticamente. O documento
+                      precisa estar compartilhado como "Qualquer pessoa com o link".
+                    </Text>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <Text style={styles.fieldHint}>
+                    Escolha a plataforma e cole o link da faixa/álbum/playlist. No
+                    Spotify o player toca embutido no app; nas outras, o link abre
+                    na plataforma original.
+                  </Text>
+                  <View style={styles.categoryRow}>
+                    {STREAMING_PROVIDERS.map((p) => (
+                      <Pressable
+                        key={p}
+                        style={[
+                          styles.categoryChip,
+                          form.streamingProvider === p && styles.categoryChipActive,
+                        ]}
+                        onPress={() => setForm((f) => ({ ...f, streamingProvider: p }))}
+                        accessibilityRole="button"
+                      >
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            form.streamingProvider === p && styles.categoryChipTextActive,
+                          ]}
+                        >
+                          {STREAMING_PROVIDER_LABEL[p]}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="https://open.spotify.com/track/... (ou link da plataforma escolhida)"
+                    placeholderTextColor={colors.textSecondary}
+                    value={form.streamingUrl}
+                    onChangeText={(streamingUrl) => setForm((f) => ({ ...f, streamingUrl }))}
+                    autoCapitalize="none"
+                  />
+                </>
+              )}
+            </View>
+
+            <View style={styles.libraryCard}>
+              <Text style={styles.formGroupTitle}>Publicação</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ordem (número)"
+                placeholderTextColor={colors.textSecondary}
+                value={String(form.order)}
+                onChangeText={(v) => setForm((f) => ({ ...f, order: Number(v) || 0 }))}
+                keyboardType="numeric"
+              />
+              <View style={styles.row}>
+                <Text style={styles.label}>Publicado</Text>
+                <Switch
+                  value={form.published}
+                  onValueChange={(published) => setForm((f) => ({ ...f, published }))}
+                  trackColor={{ false: colors.textSecondary, true: colors.primaryLight }}
+                  thumbColor={form.published ? colors.primary : colors.surface}
+                />
+              </View>
+
+              {formError ? <Text style={styles.error}>{formError}</Text> : null}
+
+              <View style={styles.formButtonsRow}>
+                <Pressable style={styles.primaryButton} onPress={submitForm} accessibilityRole="button">
+                  <Text style={styles.primaryButtonText}>
+                    {editingId ? "Salvar alterações" : "Adicionar item"}
+                  </Text>
+                </Pressable>
+                {editingId ? (
+                  <Pressable
+                    style={styles.secondaryButton}
+                    onPress={() => {
+                      startNew();
+                      setActiveTab("library");
+                    }}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.secondaryButtonText}>Cancelar</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          </>
+        ) : null}
+      </ScrollView>
+
+      <Toast toast={toast} />
+
+      {importOpen ? (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              <View style={styles.headerRow}>
+                <Text style={styles.libraryCardTitle}>
+                  Importar {CATEGORY_LABEL[category]}
+                </Text>
+                <Pressable onPress={closeImport} accessibilityRole="button">
+                  <Text style={styles.link}>Fechar</Text>
+                </Pressable>
+              </View>
+
+              {importLoading ? (
+                <Text style={styles.helper}>Lendo a planilha…</Text>
+              ) : importError ? (
+                <Text style={styles.error}>{importError}</Text>
+              ) : importRows.length === 0 ? (
+                <Text style={styles.helper}>
+                  Nenhuma linha encontrada nessa planilha.
+                </Text>
+              ) : (
+                <>
+                  <Text style={styles.fieldHint}>
+                    Toque em cada coluna abaixo pra escolher o que ela é
+                    (título, descrição/autor, link, etc). Já tentamos
+                    adivinhar pelo nome da coluna.
+                  </Text>
+                  <View style={styles.categoryRow}>
+                    {importHeaders.map((header, columnIndex) => (
+                      <Pressable
+                        key={`${header}-${columnIndex}`}
+                        style={[
+                          styles.categoryChip,
+                          importMapping[columnIndex] !== "ignore" &&
+                            styles.categoryChipActive,
+                        ]}
+                        onPress={() => cycleMapping(columnIndex)}
+                        accessibilityRole="button"
+                      >
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            importMapping[columnIndex] !== "ignore" &&
+                              styles.categoryChipTextActive,
+                          ]}
+                        >
+                          {header || `Coluna ${columnIndex + 1}`}:{" "}
+                          {IMPORT_FIELD_LABEL[importMapping[columnIndex] ?? "ignore"]}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <Text style={styles.fieldHint}>
+                    Selecione as linhas que quer importar ({importSelected.size} de{" "}
+                    {importRows.length}):
+                  </Text>
+                  {importRows.map((row, rowIndex) => {
+                    const title = valueForField(row, "title") || "(sem título)";
+                    const description = valueForField(row, "description");
+                    return (
+                      <Pressable
+                        key={rowIndex}
+                        style={styles.importRow}
+                        onPress={() => toggleRowSelected(rowIndex)}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: importSelected.has(rowIndex) }}
+                      >
+                        <Switch
+                          value={importSelected.has(rowIndex)}
+                          onValueChange={() => toggleRowSelected(rowIndex)}
+                          trackColor={{ false: colors.textSecondary, true: colors.primaryLight }}
+                          thumbColor={importSelected.has(rowIndex) ? colors.primary : colors.surface}
+                        />
+                        <View style={styles.itemTextColumn}>
+                          <Text style={styles.itemTitle}>{title}</Text>
+                          {description ? (
+                            <Text style={styles.itemDescription}>{description}</Text>
+                          ) : null}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+
+                  {importResult ? (
+                    <Text style={styles.success}>{importResult}</Text>
+                  ) : null}
+
+                  <Pressable
+                    style={[
+                      styles.primaryButton,
+                      (importRunning || importSelected.size === 0) && styles.buttonDisabled,
+                    ]}
+                    onPress={runImport}
+                    disabled={importRunning || importSelected.size === 0}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.primaryButtonText}>
+                      {importRunning
+                        ? "Importando…"
+                        : `Importar ${importSelected.size} selecionado(s)`}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
+function formValuesFromItem(item: ContentItem): ItemFormValues {
+  return {
+    title: item.title,
+    description: item.description ?? "",
+    category: item.category,
+    source: item.source,
+    text: item.text ?? "",
+    fileUrl: item.fileUrl ?? "",
+    fileType: item.fileType ?? "pdf",
+    streamingProvider: item.streamingProvider ?? "spotify",
+    streamingUrl: item.streamingUrl ?? "",
+    order: item.order,
+    published: item.published,
+  };
+}
+
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+  },
+  container: {
+    flex: 1,
   },
   loginContainer: {
     flex: 1,
@@ -939,7 +1205,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   scrollContent: {
-    padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
   centered: {
@@ -958,6 +1223,34 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: colors.textPrimary,
   },
+  tabRow: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  tab: {
+    flex: 1,
+    minHeight: minTouchSize - 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottomWidth: 2,
+    borderBottomColor: colors.primaryLight,
+    paddingVertical: spacing.xs,
+  },
+  tabActive: {
+    borderBottomColor: colors.primary,
+  },
+  tabText: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
+  tabTextActive: {
+    color: colors.primary,
+  },
   sectionTitle: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "700",
@@ -965,6 +1258,15 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
+  },
+  formGroupTitle: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 14,
+    color: colors.primary,
+    marginBottom: spacing.sm,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   helper: {
     fontFamily: fonts.bodyFallback,
@@ -1027,6 +1329,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginTop: spacing.sm,
   },
+  primaryButtonWide: {
+    minHeight: minTouchSize,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primary,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
   buttonDisabled: {
     opacity: 0.5,
   },
@@ -1038,7 +1350,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   dangerButtonText: {
     fontFamily: fonts.bodyFallback,
@@ -1140,14 +1452,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.accent,
   },
-  importPanel: {
-    backgroundColor: colors.background,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
   importRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1193,13 +1497,91 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: colors.surface,
   },
-  itemRow: {
+  divider: {
+    height: 1,
+    backgroundColor: colors.primaryLight,
+    marginVertical: spacing.sm,
+  },
+  skeletonRow: {
+    height: 52,
+    borderRadius: radii.md,
+    backgroundColor: colors.background,
+    opacity: 0.6,
+    marginBottom: spacing.xs,
+  },
+  accordionCard: {
+    backgroundColor: colors.background,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    marginBottom: spacing.xs,
+    overflow: "hidden",
+  },
+  accordionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
+    justifyContent: "space-between",
     padding: spacing.md,
-    marginBottom: spacing.xs,
+  },
+  accordionBody: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  accordionActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: spacing.sm,
+  },
+  accordionActionsSpacer: {
+    flex: 1,
+  },
+  chevron: {
+    fontSize: 22,
+    color: colors.textSecondary,
+    transform: [{ rotate: "0deg" }],
+  },
+  chevronExpanded: {
+    transform: [{ rotate: "90deg" }],
+    color: colors.primary,
+  },
+  reorderButton: {
+    minWidth: 32,
+    minHeight: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: radii.sm,
+    marginRight: spacing.xs,
+  },
+  reorderButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: 2,
+  },
+  statusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  statusBadgePublished: {
+    backgroundColor: colors.accent,
+  },
+  statusBadgeDraft: {
+    backgroundColor: colors.textSecondary,
+  },
+  statusBadgeText: {
+    fontFamily: fonts.bodyFallback,
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.surface,
   },
   itemTextColumn: {
     flex: 1,
@@ -1220,7 +1602,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyFallback,
     fontSize: 12,
     color: colors.textSecondary,
-    marginTop: 2,
   },
   row: {
     flexDirection: "row",
@@ -1232,5 +1613,51 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyFallback,
     fontSize: 15,
     color: colors.textPrimary,
+  },
+  toast: {
+    position: "absolute",
+    top: spacing.md,
+    left: spacing.lg,
+    right: spacing.lg,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  toastSuccess: {
+    backgroundColor: colors.accent,
+  },
+  toastError: {
+    backgroundColor: "#B3261E",
+  },
+  toastText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "600",
+    fontSize: 14,
+    color: colors.surface,
+    textAlign: "center",
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 560,
+    maxHeight: "85%",
+    backgroundColor: colors.background,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    padding: spacing.md,
+  },
+  modalScrollContent: {
+    paddingBottom: spacing.md,
   },
 });

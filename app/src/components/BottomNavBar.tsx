@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, spacing } from "@/theme/tokens";
@@ -23,10 +23,13 @@ interface Props {
 }
 
 /**
- * Barra de navegação fixa no rodapé de todas as páginas de conteúdo,
- * a pedido do Head (2026-09-21): subnavegação entre as 4 categorias,
- * com a página atual destacada e acesso direto às outras sem precisar
- * voltar para a Home primeiro.
+ * Barra de navegação flutuante, fixa na mesma posição em TODAS as
+ * páginas — inclusive a Home (2026-09-21, a pedido do Head: era o único
+ * menu de navegação entre categorias, mas a Home também tinha os 4
+ * botões grandes de categoria, duplicando a mesma ação de duas formas
+ * diferentes; os botões grandes foram removidos da Home e esta barra
+ * passou a ser o único menu, "flutuando" sobre o conteúdo em vez de
+ * empurrar o layout, com a mesma posição/aparência em todo lugar).
  */
 export function BottomNavBar({ active }: Props) {
   const navigation =
@@ -64,16 +67,33 @@ export function BottomNavBar({ active }: Props) {
 
 const styles = StyleSheet.create({
   bar: {
+    position: "absolute",
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: spacing.lg,
+    maxWidth: 480,
+    alignSelf: "center",
     flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: colors.primaryLight,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
     backgroundColor: colors.surface,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+    ...Platform.select({
+      web: { boxShadow: "0 4px 16px rgba(0,0,0,0.12)" },
+      default: {
+        shadowColor: "#000",
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
+      },
+    }),
   },
   tab: {
     flex: 1,
-    minHeight: minTouchSize,
+    minHeight: minTouchSize - 8,
     alignItems: "center",
     justifyContent: "center",
     gap: 2,

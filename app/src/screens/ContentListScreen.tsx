@@ -103,5 +103,6 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: spacing.lg,
+    paddingBottom: 100,
   },
 });
