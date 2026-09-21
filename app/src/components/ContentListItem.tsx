@@ -14,6 +14,7 @@ const FILE_TYPE_LABEL: Record<NonNullable<ContentItem["fileType"]>, string> = {
   image: "Ver imagem",
   audio: "Ouvir agora",
   gdoc: "Ler agora",
+  txt: "Ler agora",
 };
 
 const STREAMING_LABEL: Record<StreamingProvider, string> = {

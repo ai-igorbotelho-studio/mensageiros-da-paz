@@ -73,6 +73,9 @@ export function ItemDetailScreen({ route, navigation }: Props) {
   // não bate com o padrão /document/d/.../) e oferece abrir como
   // arquivo normal, igual à categoria PDF.
   const [gdocNotARealDoc, setGdocNotARealDoc] = useState(false);
+  const [txtContent, setTxtContent] = useState<string | null>(null);
+  const [txtLoading, setTxtLoading] = useState(false);
+  const [txtError, setTxtError] = useState(false);
   const [imageAttempt, setImageAttempt] = useState<0 | 1>(0);
   // Áudio do Drive tenta primeiro o player DO PRÓPRIO APP (bonito,
   // consistente com o resto da interface) usando o endpoint mais novo
@@ -84,6 +87,10 @@ export function ItemDetailScreen({ route, navigation }: Props) {
   const [driveIframeFallback, setDriveIframeFallback] = useState(false);
 
   const isGdoc = item.source === "upload" && item.fileType === "gdoc" && !!item.fileUrl;
+  // "txt" = arquivo de texto puro em qualquer link (Drive, Cloudflare,
+  // etc.), lido direto — sem exigir que seja um Google Doc de verdade.
+  // Amplia os formatos aceitos pra Textos (2026-09-21, a pedido do Head).
+  const isTxt = item.source === "upload" && item.fileType === "txt" && !!item.fileUrl;
   const isDriveAudio =
     item.source === "upload" && item.fileType === "audio" && !!item.fileUrl && item.fileUrl.includes("drive.google.com");
   const drivePreviewUrl =
@@ -110,6 +117,21 @@ export function ItemDetailScreen({ route, navigation }: Props) {
       .finally(() => setGdocLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGdoc, item.fileUrl]);
+
+  useEffect(() => {
+    if (!isTxt || !item.fileUrl) return;
+    setTxtLoading(true);
+    setTxtError(false);
+    fetch(toDirectFileUrl(item.fileUrl))
+      .then((res) => {
+        if (!res.ok) throw new Error("fetch failed");
+        return res.text();
+      })
+      .then(setTxtContent)
+      .catch(() => setTxtError(true))
+      .finally(() => setTxtLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTxt, item.fileUrl]);
 
   useEffect(() => {
     return () => {
@@ -247,6 +269,31 @@ export function ItemDetailScreen({ route, navigation }: Props) {
           />
         ) : (
           <Text style={styles.itemText}>{gdocText}</Text>
+        )
+      ) : null}
+
+      {isTxt ? (
+        txtLoading ? (
+          <Text style={styles.description}>Carregando texto…</Text>
+        ) : txtError ? (
+          <ErrorState
+            message="Não conseguimos carregar esse arquivo de texto. Confira se o link está acessível publicamente."
+            onRetry={() => {
+              if (!item.fileUrl) return;
+              setTxtError(false);
+              setTxtLoading(true);
+              fetch(toDirectFileUrl(item.fileUrl))
+                .then((res) => {
+                  if (!res.ok) throw new Error("fetch failed");
+                  return res.text();
+                })
+                .then(setTxtContent)
+                .catch(() => setTxtError(true))
+                .finally(() => setTxtLoading(false));
+            }}
+          />
+        ) : (
+          <Text style={styles.itemText}>{txtContent}</Text>
         )
       ) : null}
 

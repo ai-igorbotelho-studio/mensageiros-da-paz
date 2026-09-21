@@ -1,6 +1,12 @@
 export type ContentCategory = "oracoes" | "musicas" | "textos" | "livros";
 
-export type FileType = "pdf" | "image" | "audio" | "gdoc";
+// "txt" = arquivo de texto puro hospedado em qualquer link (Drive,
+// Cloudflare, etc.), lido direto — diferente de "gdoc" (que exige um
+// Google Doc de verdade, pra edição ao vivo) e diferente de `text`
+// (texto colado direto no admin, sem arquivo nenhum). Amplia os
+// formatos aceitos pra Textos além de só Google Doc (2026-09-21, a
+// pedido do Head).
+export type FileType = "pdf" | "image" | "audio" | "gdoc" | "txt";
 
 /**
  * "upload" = arquivo com link direto, de qualquer provedor de cloud

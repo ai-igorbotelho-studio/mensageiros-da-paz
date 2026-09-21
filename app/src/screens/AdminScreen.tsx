@@ -584,7 +584,7 @@ function AdminDashboard({ user }: { user: User }) {
         const coverImageUrl = valueForField(row, "coverImageUrl");
         const text = valueForField(row, "text");
         const rawFileType = valueForField(row, "fileType").toLowerCase();
-        const fileType: FileType = (["pdf", "image", "audio", "gdoc"] as FileType[]).includes(
+        const fileType: FileType = (["pdf", "image", "audio", "gdoc", "txt"] as FileType[]).includes(
           rawFileType as FileType
         )
           ? (rawFileType as FileType)
@@ -993,7 +993,7 @@ function AdminDashboard({ user }: { user: User }) {
                     autoCapitalize="none"
                   />
                   <View style={styles.categoryRow}>
-                    {(["pdf", "image", "audio", "gdoc"] as FileType[]).map((ft) => (
+                    {(["pdf", "image", "audio", "gdoc", "txt"] as FileType[]).map((ft) => (
                       <Pressable
                         key={ft}
                         style={[styles.categoryChip, form.fileType === ft && styles.categoryChipActive]}
@@ -1011,6 +1011,13 @@ function AdminDashboard({ user }: { user: User }) {
                       </Pressable>
                     ))}
                   </View>
+                  {form.fileType === "audio" ? (
+                    <Text style={styles.fieldHint}>
+                      Aceita qualquer formato de áudio que o navegador toque
+                      (mp3, wav, m4a, ogg, etc.) — o tipo do arquivo não
+                      importa pro app, só o link precisa funcionar.
+                    </Text>
+                  ) : null}
                   {form.fileType === "audio" && form.fileUrl.includes("drive.google.com") ? (
                     <Text style={styles.fieldHint}>
                       Link do Google Drive detectado: o app converte automaticamente
@@ -1026,6 +1033,15 @@ function AdminDashboard({ user }: { user: User }) {
                       direto do documento toda vez que alguém abre o item, então
                       editar o Doc atualiza o app automaticamente. O documento
                       precisa estar compartilhado como "Qualquer pessoa com o link".
+                    </Text>
+                  ) : null}
+                  {form.fileType === "txt" ? (
+                    <Text style={styles.fieldHint}>
+                      Cole o link de um arquivo de texto puro (.txt) hospedado
+                      em qualquer lugar (Drive, Cloudflare, etc.) — diferente
+                      de "Texto/gdoc", não precisa ser um Google Doc.
+                      Funciona bem pra textos que não vão ser editados ao
+                      vivo, só lidos.
                     </Text>
                   ) : null}
 

@@ -75,7 +75,7 @@ export const IMPORT_FIELD_LABEL: Record<ImportField, string> = {
   text: "Texto completo",
   coverImageUrl: "Capa (imagem)",
   fileUrl: "Link do arquivo",
-  fileType: "Tipo de arquivo (pdf/image/audio/gdoc)",
+  fileType: "Tipo de arquivo (pdf/image/audio/gdoc/txt)",
   order: "Ordem",
 };
 
