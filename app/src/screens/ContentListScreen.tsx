@@ -7,6 +7,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/EmptyState";
 import { ContentListItem } from "@/components/ContentListItem";
+import { BottomNavBar } from "@/components/BottomNavBar";
 import type { ContentCategory, ContentItem, RootStackParamList } from "@/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ContentList">;
@@ -49,19 +50,32 @@ export function ContentListScreen({ route, navigation }: Props) {
   if (loading) return <LoadingState />;
   if (error) {
     return (
-      <ErrorState
-        message="Não conseguimos carregar esta lista agora. Tente novamente em instantes."
-        onRetry={load}
-      />
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <ErrorState
+            message="Não conseguimos carregar esta lista agora. Tente novamente em instantes."
+            onRetry={load}
+          />
+        </View>
+        <BottomNavBar active={category} />
+      </View>
     );
   }
   if (items.length === 0) {
-    return <EmptyState message={EMPTY_MESSAGE[category]} />;
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <EmptyState message={EMPTY_MESSAGE[category]} />
+        </View>
+        <BottomNavBar active={category} />
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
       <FlatList
+        style={styles.content}
         data={items}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
@@ -74,6 +88,7 @@ export function ContentListScreen({ route, navigation }: Props) {
           />
         )}
       />
+      <BottomNavBar active={category} />
     </View>
   );
 }
@@ -82,6 +97,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
   },
   list: {
     padding: spacing.lg,

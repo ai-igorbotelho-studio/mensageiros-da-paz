@@ -1,12 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { ErrorState } from "@/components/ErrorState";
 import { SpotifyEmbed } from "@/components/SpotifyEmbed";
+import { BottomNavBar } from "@/components/BottomNavBar";
 import { toDirectFileUrl, toGoogleDocsTextExportUrl } from "@/utils/driveUrl";
-import type { RootStackParamList, StreamingProvider } from "@/types";
+import type { ContentCategory, RootStackParamList, StreamingProvider } from "@/types";
+
+const CATEGORY_LABEL: Record<ContentCategory, string> = {
+  oracoes: "Orações",
+  musicas: "Músicas",
+  textos: "Textos",
+  livros: "Livros",
+};
 
 /** Extrai o id da faixa de uma URL do Spotify (open.spotify.com/track/{id} ou /embed/track/{id}). */
 function extractSpotifyTrackId(url: string): string | null {
@@ -32,7 +48,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "ItemDetail">;
  */
 const VOLUME_STEP = 0.1;
 
-export function ItemDetailScreen({ route }: Props) {
+export function ItemDetailScreen({ route, navigation }: Props) {
   const { item } = route.params;
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [status, setStatus] = useState<AVPlaybackStatus | null>(null);
@@ -121,7 +137,24 @@ export function ItemDetailScreen({ route }: Props) {
   const canStop = isLoaded && (isPlaying || (status && "positionMillis" in status && status.positionMillis > 0));
 
   return (
-    <View style={styles.container}>
+    <View style={styles.outer}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <Pressable
+        style={styles.backButton}
+        onPress={() =>
+          navigation.navigate("ContentList", {
+            category: item.category,
+            title: CATEGORY_LABEL[item.category],
+          })
+        }
+        accessibilityRole="button"
+        accessibilityLabel={`Voltar para ${CATEGORY_LABEL[item.category]}`}
+      >
+        <Text style={styles.backButtonText}>
+          ← Voltar para {CATEGORY_LABEL[item.category]}
+        </Text>
+      </Pressable>
+
       <Text style={styles.title}>{item.title}</Text>
       {item.description ? (
         <Text style={styles.description}>{item.description}</Text>
@@ -266,15 +299,36 @@ export function ItemDetailScreen({ route }: Props) {
           */}
         </View>
       ) : null}
+      </ScrollView>
+      <BottomNavBar active={item.category} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scrollContent: {
     padding: spacing.lg,
+  },
+  backButton: {
+    minHeight: minTouchSize - 8,
+    alignSelf: "flex-start",
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  backButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "600",
+    fontSize: 14,
+    color: colors.primary,
   },
   title: {
     fontFamily: fonts.displayFallback,

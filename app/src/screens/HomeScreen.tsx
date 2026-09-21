@@ -6,6 +6,7 @@ import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { fetchPracticeOfTheWeek } from "@/firebase/firestore";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
+import { BottomNavBar } from "@/components/BottomNavBar";
 import {
   BookIcon,
   MusicIcon,
@@ -82,7 +83,7 @@ export function HomeScreen({ navigation }: Props) {
   if (loading) return <LoadingState />;
   if (error) {
     return (
-      <View style={styles.container}>
+      <View style={styles.outer}>
         <View style={styles.content}>
           {emblem}
           <ErrorState
@@ -90,46 +91,54 @@ export function HomeScreen({ navigation }: Props) {
             onRetry={load}
           />
         </View>
+        <BottomNavBar />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.emblemArea}>{emblem}</View>
-      <View style={styles.textArea}>
-        <Text style={styles.label}>Prática da semana</Text>
-        <Text style={styles.practiceText}>
-          {text || "Nenhuma prática publicada no momento."}
-        </Text>
+    <View style={styles.outer}>
+      <View style={styles.container}>
+        <View style={styles.emblemArea}>{emblem}</View>
+        <View style={styles.textArea}>
+          <Text style={styles.label}>Prática da semana</Text>
+          <Text style={styles.practiceText}>
+            {text || "Nenhuma prática publicada no momento."}
+          </Text>
+        </View>
+        <View style={styles.buttonArea}>
+          {OPTIONS.map((option) => (
+            <Pressable
+              key={option.category}
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={() =>
+                navigation.navigate("ContentList", {
+                  category: option.category,
+                  title: option.label,
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel={option.label}
+            >
+              <option.Icon size={15} color={colors.surface} />
+              <Text style={styles.buttonText}>{option.label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
-      <View style={styles.buttonArea}>
-        {OPTIONS.map((option) => (
-          <Pressable
-            key={option.category}
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.buttonPressed,
-            ]}
-            onPress={() =>
-              navigation.navigate("ContentList", {
-                category: option.category,
-                title: option.label,
-              })
-            }
-            accessibilityRole="button"
-            accessibilityLabel={option.label}
-          >
-            <option.Icon size={15} color={colors.surface} />
-            <Text style={styles.buttonText}>{option.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <BottomNavBar />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
