@@ -332,13 +332,14 @@ function AdminDashboard({ user }: { user: User }) {
   // categoria específica é uma escolha explícita (a pedido do Head).
   const [showAllLibrary, setShowAllLibrary] = useState(true);
   // Categorias com a lista de itens recolhida, na Biblioteca completa —
-  // o cabeçalho de categoria agora funciona como accordeon (toque
+  // o cabeçalho de categoria funciona como accordeon (toque
   // recolhe/expande só a lista) separado do botão "Ver todos" (que
-  // navega pra área da categoria), a pedido do Head (2026-09-21).
-  // Nenhuma recolhida por padrão = mesmo comportamento visual de antes.
+  // navega pra área da categoria), a pedido do Head (2026-09-21). Todas
+  // recolhidas por padrão ao abrir — só os cabeçalhos das 4 categorias
+  // aparecem de cara, sem lista nenhuma (achado do Head 2026-09-21).
   const [collapsedOverviewCategories, setCollapsedOverviewCategories] = useState<
     Set<ContentCategory>
-  >(new Set());
+  >(new Set(CATEGORIES));
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -437,7 +438,7 @@ function AdminDashboard({ user }: { user: User }) {
   function goToAdminHome() {
     setActiveTab("library");
     setShowAllLibrary(true);
-    setCollapsedOverviewCategories(new Set());
+    setCollapsedOverviewCategories(new Set(CATEGORIES));
     setExpandedId(null);
     setConfirmDeleteId(null);
     setConfirmDeleteAll(false);
@@ -984,7 +985,9 @@ function AdminDashboard({ user }: { user: User }) {
                             accessibilityRole="button"
                             accessibilityLabel={`Ir para a área de ${CATEGORY_LABEL[c]}`}
                           >
-                            <Text style={styles.overviewGroupGoButtonText}>Ver todos</Text>
+                            <View style={styles.overviewGroupGoCircle}>
+                              <Text style={styles.overviewGroupGoGlyph}>↗</Text>
+                            </View>
                           </PressableScale>
                         </View>
                         {collapsed ? null : catItems.length === 0 ? (
@@ -2155,11 +2158,26 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderLeftColor: "rgba(255,255,255,0.25)",
   },
-  overviewGroupGoButtonText: {
-    fontFamily: fonts.bodyFallback,
-    fontWeight: "700",
-    fontSize: 12.5,
+  // Mesmo círculo com seta fina usado nas linhas da lista pública
+  // (ContentListItem) — invertido (contorno claro sobre fundo cheio)
+  // pra manter contraste aqui, a pedido do Head (2026-09-21): trocou
+  // o botão de texto "Ver todos" por esse ícone, consistente com o
+  // resto do app.
+  overviewGroupGoCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: radii.pill,
+    borderWidth: 1.5,
+    borderColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  overviewGroupGoGlyph: {
+    fontSize: 15,
+    fontWeight: "300",
     color: colors.surface,
+    marginBottom: 1,
+    marginLeft: 1,
   },
   overviewGroupTitle: {
     flex: 1,
