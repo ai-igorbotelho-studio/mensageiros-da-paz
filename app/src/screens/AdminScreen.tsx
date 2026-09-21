@@ -1478,7 +1478,7 @@ const styles = StyleSheet.create({
     minHeight: minTouchSize,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#B3261E",
+    backgroundColor: colors.danger,
     borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -1488,7 +1488,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyFallback,
     fontWeight: "700",
     fontSize: 14,
-    color: "#FFF6EF",
+    color: colors.surface,
     textAlign: "center",
   },
   primaryButtonText: {
@@ -1522,7 +1522,9 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: fonts.bodyFallback,
     fontSize: 14,
-    color: colors.accent,
+    // Mesmo bug do linkDanger: colors.accent é a cor de SUCESSO
+    // (Sage), errada pra mensagem de erro.
+    color: colors.danger,
     marginTop: spacing.sm,
   },
   success: {
@@ -1601,7 +1603,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyFallback,
     fontSize: 14,
     fontWeight: "600",
-    color: colors.accent,
+    // Antes usava colors.accent (Sage, a cor de SUCESSO) pro link
+    // "Excluir"/"Confirmar exclusão" — semanticamente errado pra uma
+    // ação destrutiva, achado na auditoria de direção criativa
+    // 2026-09-21.
+    color: colors.danger,
     marginLeft: spacing.md,
   },
   categoryRow: {
@@ -1759,7 +1765,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   toastError: {
-    backgroundColor: "#B3261E",
+    backgroundColor: colors.danger,
   },
   toastText: {
     fontFamily: fonts.bodyFallback,

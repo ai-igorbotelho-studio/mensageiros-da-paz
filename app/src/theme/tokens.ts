@@ -15,6 +15,7 @@ export const colors = {
   textPrimary: "#00170C", // Deep mint (quase preto esverdeado)
   textSecondary: "#6B4463", // tom escurecido de Mulberry, para texto secundário legível
   success: "#3BCFA9", // Sage
+  danger: "#B3261E", // vermelho de ação destrutiva (excluir, apagar todos) — antes hardcoded em 3 lugares do AdminScreen
   darkBackground: "#00170C", // Deep mint
   // Texto/ícone "inativo" sobre fundo `primary` sólido (ex.: BottomNavBar
   // invertida) — `primaryLight` sobre `primary` tem contraste baixo demais
