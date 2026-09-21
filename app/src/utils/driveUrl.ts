@@ -1,10 +1,18 @@
 /**
  * Converte um link de compartilhamento do Google Drive (página de
  * visualização HTML, ex. .../file/d/{id}/view?usp=sharing) para a URL de
- * conteúdo direto (.../uc?export=view&id={id}) — necessário pra tocar
- * áudio ou exibir imagem embutida no app. Um link "view" normal retorna
- * HTML, não os bytes do arquivo, então `Audio.Sound`/`<Image>` falham
- * silenciosamente ao tentar carregar.
+ * conteúdo direto — necessário pra tocar áudio ou exibir imagem embutida
+ * no app. Um link "view" normal retorna HTML, não os bytes do arquivo,
+ * então `Audio.Sound`/`<Image>` falham silenciosamente ao tentar
+ * carregar.
+ *
+ * Usa `export=download` (não `export=view`): pra arquivos que não são
+ * imagem (áudio, por exemplo), `export=view` frequentemente devolve a
+ * página HTML de pré-visualização em vez dos bytes brutos — é isso que
+ * fazia a música não tocar. `export=download` serve o conteúdo direto
+ * tanto pra imagem quanto pra áudio, enquanto o arquivo for pequeno o
+ * bastante pra não disparar o aviso de "não foi possível escanear" do
+ * Drive (funciona bem pros tamanhos típicos de mp3/imagem usados aqui).
  *
  * PDF não precisa disso — abre externamente via `Linking.openURL`, e o
  * próprio Google trata a visualização nesse caso.
@@ -19,7 +27,7 @@ export function toDirectFileUrl(url: string): string {
   const fileId = fileIdMatch?.[1];
   if (!fileId) return url;
 
-  return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  return `https://drive.google.com/uc?export=download&id=${fileId}`;
 }
 
 /**

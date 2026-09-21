@@ -104,7 +104,9 @@ export function ItemDetailScreen({ route, navigation }: Props) {
       } else {
         await sound.playAsync();
       }
-    } catch {
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Falha ao tocar áudio:", item.fileUrl, err);
       setPlaybackError(true);
     }
   }
