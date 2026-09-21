@@ -171,9 +171,11 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   // Círculo que "salta" pra fora da barra sobre a categoria ativa — cor
-  // diferente da barra (Sage, o "destaque" da paleta, contra o Mulberry
-  // da barra) e halo de sombra colorida em volta, pra ler como um botão
-  // "aceso" de verdade, não só um ícone maior.
+  // diferente do fundo da barra (Magenta/primaryLight, mesma família do
+  // Mulberry da barra mas mais clara — trocado de Sage/verde a pedido
+  // do Head, 2026-09-21: verde remetia mais a "sucesso" que a
+  // "cerimônia/prática espiritual") e halo de sombra colorida em volta,
+  // pra ler como um botão "aceso" de verdade, não só um ícone maior.
   circle: {
     position: "absolute",
     top: -(CIRCLE_SIZE / 2 + 14),
@@ -182,12 +184,12 @@ const styles = StyleSheet.create({
     width: CIRCLE_SIZE,
     height: CIRCLE_SIZE,
     borderRadius: CIRCLE_SIZE / 2,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primaryLight,
     borderWidth: 3,
     borderColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: colors.accent,
+    shadowColor: colors.primaryLight,
     shadowOpacity: 0.55,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
