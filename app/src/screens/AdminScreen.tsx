@@ -170,6 +170,8 @@ function AdminDashboard({ user }: { user: User }) {
   const [form, setForm] = useState<ItemFormValues>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
 
   useEffect(() => {
     adminGetPracticeOfTheWeek()
@@ -189,6 +191,7 @@ function AdminDashboard({ user }: { user: User }) {
   }, [category]);
 
   useEffect(() => {
+    setConfirmDeleteAll(false);
     loadItems();
   }, [loadItems]);
 
@@ -262,6 +265,23 @@ function AdminDashboard({ user }: { user: User }) {
     loadItems();
   }
 
+  async function removeAllInCategory() {
+    if (!confirmDeleteAll) {
+      setConfirmDeleteAll(true);
+      return;
+    }
+    setDeletingAll(true);
+    try {
+      for (const item of items) {
+        await adminDeleteItem(item.id);
+      }
+      loadItems();
+    } finally {
+      setDeletingAll(false);
+      setConfirmDeleteAll(false);
+    }
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.headerRow}>
@@ -331,6 +351,23 @@ function AdminDashboard({ user }: { user: User }) {
           </Pressable>
         ))}
       </View>
+
+      {!itemsLoading && items.length > 0 ? (
+        <Pressable
+          style={[styles.dangerButton, deletingAll && styles.buttonDisabled]}
+          onPress={removeAllInCategory}
+          disabled={deletingAll}
+          accessibilityRole="button"
+        >
+          <Text style={styles.dangerButtonText}>
+            {deletingAll
+              ? "Apagando…"
+              : confirmDeleteAll
+                ? `Confirmar: apagar ${items.length} itens de ${CATEGORY_LABEL[category]}?`
+                : `Apagar todos de ${CATEGORY_LABEL[category]} (${items.length})`}
+          </Text>
+        </Pressable>
+      ) : null}
 
       {itemsLoading ? (
         <Text style={styles.helper}>Carregando…</Text>
@@ -651,6 +688,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginTop: spacing.sm,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  dangerButton: {
+    minHeight: minTouchSize,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#B3261E",
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+  dangerButtonText: {
+    fontFamily: fonts.bodyFallback,
+    fontWeight: "700",
+    fontSize: 14,
+    color: "#FFF6EF",
+    textAlign: "center",
   },
   primaryButtonText: {
     fontFamily: fonts.bodyFallback,
