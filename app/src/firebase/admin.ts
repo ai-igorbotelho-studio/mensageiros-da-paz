@@ -9,7 +9,6 @@ import {
   setDoc,
   query,
   where,
-  orderBy,
   serverTimestamp,
 } from "firebase/firestore";
 import {
@@ -80,27 +79,31 @@ export async function adminListItemsByCategory(
 ): Promise<ContentItem[]> {
   if (!firebaseReady || !db) throw new Error("Firebase não configurado");
   const itemsRef = collection(db, "items");
-  const q = query(itemsRef, where("category", "==", category), orderBy("order", "asc"));
+  // Sem `orderBy` — ver o mesmo comentário em firestore.ts
+  // (fetchItemsByCategory): evita depender de índice composto manual.
+  const q = query(itemsRef, where("category", "==", category));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
-    const data = d.data();
-    return {
-      id: d.id,
-      title: data.title ?? "",
-      description: data.description ?? null,
-      category: data.category,
-      source: data.source ?? "upload",
-      text: data.text ?? null,
-      fileUrl: data.file_url ?? null,
-      fileType: data.file_type ?? null,
-      mimeType: data.mime_type ?? null,
-      streamingProvider: data.streaming_provider ?? null,
-      streamingUrl: data.streaming_url ?? null,
-      order: data.order ?? 0,
-      createdAt: data.created_at?.toMillis?.() ?? null,
-      published: !!data.published,
-    } satisfies ContentItem;
-  });
+  return snap.docs
+    .map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        title: data.title ?? "",
+        description: data.description ?? null,
+        category: data.category,
+        source: data.source ?? "upload",
+        text: data.text ?? null,
+        fileUrl: data.file_url ?? null,
+        fileType: data.file_type ?? null,
+        mimeType: data.mime_type ?? null,
+        streamingProvider: data.streaming_provider ?? null,
+        streamingUrl: data.streaming_url ?? null,
+        order: data.order ?? 0,
+        createdAt: data.created_at?.toMillis?.() ?? null,
+        published: !!data.published,
+      } satisfies ContentItem;
+    })
+    .sort((a, b) => a.order - b.order);
 }
 
 export interface ItemFormValues {

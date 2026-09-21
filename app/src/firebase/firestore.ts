@@ -5,7 +5,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
 } from "firebase/firestore";
 import { db, firebaseReady } from "./config";
 import type { ContentCategory, ContentItem, PracticeOfTheWeek } from "@/types";
@@ -44,30 +43,37 @@ export async function fetchItemsByCategory(
     throw new Error("Firebase não configurado");
   }
   const itemsRef = collection(db, "items");
+  // Sem `orderBy` de propósito: combinar `where` em dois campos com
+  // `orderBy` num terceiro exige um índice composto manual no Firestore
+  // (nunca criado no console) — a consulta falhava com
+  // FAILED_PRECONDITION, silenciosamente tratado como "sem itens" por
+  // quem chama. Ordenar no cliente evita depender de índice nenhum, já
+  // que cada categoria tem poucas dezenas de itens no máximo.
   const q = query(
     itemsRef,
     where("category", "==", category),
-    where("published", "==", true),
-    orderBy("order", "asc")
+    where("published", "==", true)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
-    const data = d.data();
-    return {
-      id: d.id,
-      title: data.title ?? "",
-      description: data.description ?? null,
-      category: data.category,
-      source: data.source ?? "upload",
-      text: data.text ?? null,
-      fileUrl: data.file_url ?? null,
-      fileType: data.file_type ?? null,
-      mimeType: data.mime_type ?? null,
-      streamingProvider: data.streaming_provider ?? null,
-      streamingUrl: data.streaming_url ?? null,
-      order: data.order ?? 0,
-      createdAt: data.created_at?.toMillis?.() ?? null,
-      published: !!data.published,
-    } satisfies ContentItem;
-  });
+  return snap.docs
+    .map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        title: data.title ?? "",
+        description: data.description ?? null,
+        category: data.category,
+        source: data.source ?? "upload",
+        text: data.text ?? null,
+        fileUrl: data.file_url ?? null,
+        fileType: data.file_type ?? null,
+        mimeType: data.mime_type ?? null,
+        streamingProvider: data.streaming_provider ?? null,
+        streamingUrl: data.streaming_url ?? null,
+        order: data.order ?? 0,
+        createdAt: data.created_at?.toMillis?.() ?? null,
+        published: !!data.published,
+      } satisfies ContentItem;
+    })
+    .sort((a, b) => a.order - b.order);
 }
