@@ -1,6 +1,6 @@
 export type ContentCategory = "oracoes" | "musicas" | "textos" | "livros";
 
-export type FileType = "pdf" | "image" | "audio";
+export type FileType = "pdf" | "image" | "audio" | "gdoc";
 
 /**
  * "upload" = arquivo com link direto, de qualquer provedor de cloud

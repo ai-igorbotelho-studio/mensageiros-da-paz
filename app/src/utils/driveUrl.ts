@@ -21,3 +21,18 @@ export function toDirectFileUrl(url: string): string {
 
   return `https://drive.google.com/uc?export=view&id=${fileId}`;
 }
+
+/**
+ * Converte um link de um Google Doc (.../document/d/{id}/edit?usp=sharing)
+ * para a URL de exportação em texto puro (.../export?format=txt) — usada
+ * pra ler o conteúdo do documento ao vivo dentro do app (categoria
+ * "gdoc" em `FileType`), sem precisar copiar/colar o texto manualmente
+ * no admin. O documento precisa estar compartilhado como "Qualquer
+ * pessoa com o link".
+ */
+export function toGoogleDocsTextExportUrl(url: string): string | null {
+  const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  const docId = match?.[1];
+  if (!docId) return null;
+  return `https://docs.google.com/document/d/${docId}/export?format=txt`;
+}

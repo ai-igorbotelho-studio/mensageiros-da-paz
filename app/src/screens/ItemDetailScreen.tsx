@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 import { ErrorState } from "@/components/ErrorState";
 import { SpotifyEmbed } from "@/components/SpotifyEmbed";
-import { toDirectFileUrl } from "@/utils/driveUrl";
+import { toDirectFileUrl, toGoogleDocsTextExportUrl } from "@/utils/driveUrl";
 import type { RootStackParamList, StreamingProvider } from "@/types";
 
 /** Extrai o id da faixa de uma URL do Spotify (open.spotify.com/track/{id} ou /embed/track/{id}). */
@@ -38,6 +38,31 @@ export function ItemDetailScreen({ route }: Props) {
   const [status, setStatus] = useState<AVPlaybackStatus | null>(null);
   const [playbackError, setPlaybackError] = useState(false);
   const [volume, setVolume] = useState(1);
+  const [gdocText, setGdocText] = useState<string | null>(null);
+  const [gdocLoading, setGdocLoading] = useState(false);
+  const [gdocError, setGdocError] = useState(false);
+
+  const isGdoc = item.source === "upload" && item.fileType === "gdoc" && !!item.fileUrl;
+
+  useEffect(() => {
+    if (!isGdoc || !item.fileUrl) return;
+    const exportUrl = toGoogleDocsTextExportUrl(item.fileUrl);
+    if (!exportUrl) {
+      setGdocError(true);
+      return;
+    }
+    setGdocLoading(true);
+    setGdocError(false);
+    fetch(exportUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error("fetch failed");
+        return res.text();
+      })
+      .then(setGdocText)
+      .catch(() => setGdocError(true))
+      .finally(() => setGdocLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGdoc, item.fileUrl]);
 
   useEffect(() => {
     return () => {
@@ -103,6 +128,36 @@ export function ItemDetailScreen({ route }: Props) {
       ) : null}
 
       {item.text ? <Text style={styles.itemText}>{item.text}</Text> : null}
+
+      {isGdoc ? (
+        gdocLoading ? (
+          <Text style={styles.description}>Carregando texto…</Text>
+        ) : gdocError ? (
+          <ErrorState
+            message="Não conseguimos carregar o texto do Google Doc. Confira se o link está compartilhado como 'Qualquer pessoa com o link'."
+            onRetry={() => {
+              setGdocError(false);
+              setGdocLoading(true);
+              const exportUrl = item.fileUrl ? toGoogleDocsTextExportUrl(item.fileUrl) : null;
+              if (!exportUrl) {
+                setGdocError(true);
+                setGdocLoading(false);
+                return;
+              }
+              fetch(exportUrl)
+                .then((res) => {
+                  if (!res.ok) throw new Error("fetch failed");
+                  return res.text();
+                })
+                .then(setGdocText)
+                .catch(() => setGdocError(true))
+                .finally(() => setGdocLoading(false));
+            }}
+          />
+        ) : (
+          <Text style={styles.itemText}>{gdocText}</Text>
+        )
+      ) : null}
 
       {item.source === "streaming" && item.streamingUrl ? (
         (() => {

@@ -125,6 +125,7 @@ export interface ItemFormValues {
 function mimeTypeFor(fileType: FileType): string {
   if (fileType === "pdf") return "application/pdf";
   if (fileType === "image") return "image/jpeg";
+  if (fileType === "gdoc") return "text/plain";
   return "audio/mpeg";
 }
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -294,6 +295,16 @@ function AdminDashboard({ user }: { user: User }) {
 
       {/* Prática da Semana */}
       <Text style={styles.sectionTitle}>Prática da Semana</Text>
+      <Pressable
+        onPress={() =>
+          Linking.openURL(
+            "https://docs.google.com/spreadsheets/d/1XW55nKnnHtEEfp6tNDDQHI-XW_4aONsXMKBWI1s4OAA/edit?usp=drive_link"
+          )
+        }
+        accessibilityRole="link"
+      >
+        <Text style={styles.link}>Ver histórico completo na planilha →</Text>
+      </Pressable>
       {practiceLoading ? (
         <Text style={styles.helper}>Carregando…</Text>
       ) : (
@@ -330,8 +341,12 @@ function AdminDashboard({ user }: { user: User }) {
         </>
       )}
 
-      {/* Seletor de categoria */}
-      <Text style={styles.sectionTitle}>Itens</Text>
+      {/* Biblioteca: tudo que está publicado (e rascunhos) por categoria */}
+      <Text style={styles.sectionTitle}>Biblioteca</Text>
+      <Text style={styles.helper}>
+        Tudo que está publicado (e rascunhos, marcados como "(rascunho)")
+        em cada uma das 4 páginas do app.
+      </Text>
       <View style={styles.categoryRow}>
         {CATEGORIES.map((c) => (
           <Pressable
@@ -488,7 +503,7 @@ function AdminDashboard({ user }: { user: User }) {
             autoCapitalize="none"
           />
           <View style={styles.categoryRow}>
-            {(["pdf", "image", "audio"] as FileType[]).map((ft) => (
+            {(["pdf", "image", "audio", "gdoc"] as FileType[]).map((ft) => (
               <Pressable
                 key={ft}
                 style={[styles.categoryChip, form.fileType === ft && styles.categoryChipActive]}
@@ -512,6 +527,15 @@ function AdminDashboard({ user }: { user: User }) {
               para o formato de reprodução direta. Funciona bem pra arquivos
               pequenos/médios; se o áudio não tocar, o mais confiável é
               hospedar no Cloudflare Pages (pasta content-src do repositório).
+            </Text>
+          ) : null}
+          {form.fileType === "gdoc" ? (
+            <Text style={styles.fieldHint}>
+              Cole o link de um Google Doc (não Drive comum) — ex.:
+              docs.google.com/document/d/.../edit. O app busca o texto
+              direto do documento toda vez que alguém abre o item, então
+              editar o Doc atualiza o app automaticamente. O documento
+              precisa estar compartilhado como "Qualquer pessoa com o link".
             </Text>
           ) : null}
         </>

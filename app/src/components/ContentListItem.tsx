@@ -7,6 +7,7 @@ const FILE_TYPE_LABEL: Record<NonNullable<ContentItem["fileType"]>, string> = {
   pdf: "PDF",
   image: "Imagem",
   audio: "Áudio",
+  gdoc: "Texto",
 };
 
 const STREAMING_LABEL: Record<StreamingProvider, string> = {
