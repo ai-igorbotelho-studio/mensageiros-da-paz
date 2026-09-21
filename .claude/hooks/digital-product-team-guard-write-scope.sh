@@ -5,7 +5,7 @@
 # hook does it. It reads the hook payload on stdin, looks at `agent_type`
 # (present only when the call comes from a subagent), and denies writes outside
 # each scoped agent's allowed directory. Code-writing agents (frontend, backend,
-# devops, mobile, motion, design-system-engineer, system-performance) and the
+# devops, mobile, motion, digital-product-team-design-system-engineer, digital-product-team-system-performance) and the
 # main session pass through. Read-only auditors are already blocked by their
 # own `disallowedTools`.
 set -euo pipefail
@@ -16,11 +16,13 @@ file_path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // ""')
 
 # Path-scoped subagents only; everyone else passes through.
 case "$agent_type" in
-  creative-direction|ux-architect|ui-designer)
+  digital-product-team-creative-direction|digital-product-team-ux-architect|digital-product-team-ux-research|digital-product-team-ui-designer|digital-product-team-experience-director)
     allowed_re='^(design|docs)/'; allowed_desc='/design ou /docs' ;;
-  content-seo)
+  digital-product-team-head|digital-product-team-quality-lead)
+    allowed_re='^docs/'; allowed_desc='/docs' ;;
+  digital-product-team-content-seo)
     allowed_re='^content/'; allowed_desc='/content' ;;
-  analytics-growth)
+  digital-product-team-analytics-growth|digital-product-team-growth-lead)
     allowed_re='^(content|docs)/'; allowed_desc='/content ou /docs' ;;
   *) exit 0 ;;
 esac

@@ -1,5 +1,5 @@
 ---
-name: security-privacy
+name: digital-product-team-security-privacy
 description: Segurança e privacidade — LGPD/GDPR/Privacy Act 2020 (NZ), minimização de dado, CSP, cookies/terceiros. Use para uso de dado pessoal e hardening; valida com jurídico, não dá parecer legal.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit

@@ -1,5 +1,5 @@
 ---
-name: qa-cross-browser
+name: digital-product-team-qa-cross-browser
 description: QA responsivo e cross-browser — matriz de dispositivo/navegador (Safari iOS incluso), orientação, safe-area/notch. Use antes do gate; reproduz bug sem deixar adivinhar.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit

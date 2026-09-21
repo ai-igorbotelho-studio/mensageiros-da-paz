@@ -1,5 +1,5 @@
 ---
-name: ai-security-review
+name: digital-product-team-ai-security-review
 description: Revisão de segurança de IA (CONDICIONAL) — red-teaming de prompt/output, vazamento de dado via modelo, política de uso aceitável. Use só quando houver feature de IA real em produção.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit

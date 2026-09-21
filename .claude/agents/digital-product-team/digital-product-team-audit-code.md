@@ -1,5 +1,5 @@
 ---
-name: audit-code
+name: digital-product-team-audit-code
 description: Auditoria de código independente — SAST, dependency scan, revisão crítica de PR, OWASP Top 10. Use antes de qualquer merge/deploy; nunca reporta a quem produziu o código.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit

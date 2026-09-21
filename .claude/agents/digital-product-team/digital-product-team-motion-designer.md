@@ -1,5 +1,5 @@
 ---
-name: motion-designer
+name: digital-product-team-motion-designer
 description: Coreografia de transição, easing e timing — motion justificado. Use para animar interações onde o movimento comunica algo que o estático não comunica; respeita prefers-reduced-motion.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
