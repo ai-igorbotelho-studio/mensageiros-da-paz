@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import { semanticTokens as t } from "@/theme/tokens";
 
 export type AdminToastVariant = "success" | "error" | "undo";
@@ -18,6 +18,13 @@ export interface AdminToastProps {
    * recebido.
    */
   secondsRemaining?: number;
+  /**
+   * A.5 (WCAG 2.2.1 "Timing Adjustable") — chamados quando o mouse
+   * entra/sai ou o foco de teclado entra/sai do toast, pra quem integra
+   * pausar/retomar o timer de undo. Só faz sentido em `variant="undo"`.
+   */
+  onPauseTimer?: () => void;
+  onResumeTimer?: () => void;
 }
 
 /**
@@ -26,12 +33,31 @@ export interface AdminToastProps {
  * multistack`). `role="status"` (success/undo) ou `role="alert"`
  * (error); `aria-live="polite"` pra não interromper leitura em curso.
  */
-export function AdminToast({ variant, message, actionLabel, onAction, secondsRemaining }: AdminToastProps) {
+export function AdminToast({
+  variant,
+  message,
+  actionLabel,
+  onAction,
+  secondsRemaining,
+  onPauseTimer,
+  onResumeTimer,
+}: AdminToastProps) {
   const isError = variant === "error";
   const isUndo = variant === "undo";
 
   return (
-    <View
+    <Pressable
+      // `Pressable`, não `View`: é o único componente RN com
+      // `onHoverIn`/`onHoverOut` embutidos (mouse), que somam ao
+      // `onFocus`/`onBlur` (teclado) pra pausar/retomar o timer de undo
+      // (A.5, WCAG 2.2.1). `focusable={false}` mantém o wrapper em si
+      // fora da ordem de tabulação — quem recebe foco de fato é o botão
+      // "Desfazer" logo abaixo, e o evento de foco borbulha até aqui.
+      focusable={false}
+      onHoverIn={isUndo ? onPauseTimer : undefined}
+      onHoverOut={isUndo ? onResumeTimer : undefined}
+      onFocus={isUndo ? onPauseTimer : undefined}
+      onBlur={isUndo ? onResumeTimer : undefined}
       style={[styles.base, variant === "success" && styles.success, isError && styles.error, isUndo && styles.undo]}
       accessibilityRole={isError ? "alert" : "text"}
       accessibilityLiveRegion="polite"
@@ -58,7 +84,7 @@ export function AdminToast({ variant, message, actionLabel, onAction, secondsRem
           <Text style={styles.actionText}>{actionLabel}</Text>
         </Pressable>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 

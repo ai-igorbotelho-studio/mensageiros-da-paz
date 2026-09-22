@@ -28,10 +28,23 @@ export function AdminInput({
   fieldId,
   editable = true,
   containerStyle,
+  accessibilityLabel,
   ...inputProps
 }: AdminInputProps) {
   const [focused, setFocused] = useState(false);
   const describedBy = error ? `${fieldId ?? "admin-input"}-error` : hint ? `${fieldId ?? "admin-input"}-hint` : undefined;
+  // Bug de a11y corrigido (WCAG 1.3.1/3.3.2/4.1.2): antes,
+  // `aria-labelledby` era montado sempre que `fieldId` existia, mesmo
+  // quando `label` não era passada — e o `<Text nativeID>` do label só
+  // renderiza quando `label` existe. Resultado: `aria-labelledby`
+  // apontando pra um ID inexistente, e o campo ficava sem nome
+  // acessível nenhum (nem `aria-labelledby` válido, nem
+  // `accessibilityLabel`). Agora só emitimos `aria-labelledby` quando o
+  // label de fato é renderizado; caso contrário, caímos no
+  // `accessibilityLabel` explícito (nome acessível programático).
+  const hasVisibleLabel = Boolean(label);
+  const labelledBy = hasVisibleLabel && fieldId ? `${fieldId}-label` : undefined;
+  const resolvedAccessibilityLabel = !hasVisibleLabel ? accessibilityLabel ?? label : undefined;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -53,7 +66,8 @@ export function AdminInput({
           inputProps.onBlur?.(e);
         }}
         placeholderTextColor={t.color.text.secondary}
-        aria-labelledby={fieldId ? `${fieldId}-label` : undefined}
+        aria-labelledby={labelledBy}
+        accessibilityLabel={resolvedAccessibilityLabel}
         aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
         style={[

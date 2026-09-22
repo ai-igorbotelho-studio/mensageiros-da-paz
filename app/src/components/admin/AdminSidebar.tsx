@@ -20,7 +20,9 @@ export interface AdminSidebarProps<K extends string = string> {
  * (`AdminSegmentedTabs`), controlada pelo mesmo estado de aba.
  *
  * A11y: `role="navigation"`, item ativo com `aria-current="page"`, foco
- * visível mesmo sobre fundo ativo (herdado de `PressableScale`), alvo
+ * visível mesmo sobre fundo ativo (`PressableScale` aplica um anel de
+ * `outline` em `onFocus`/`onBlur`, com contraste ≥3:1 — não é herdado
+ * "de graça", é o comportamento do próprio componente), alvo
  * ≥`size.minTouch`.
  */
 export function AdminSidebar<K extends string = string>({

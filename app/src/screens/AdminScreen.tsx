@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Linking,
-  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -235,6 +234,7 @@ export function AdminScreen() {
         <AdminInput
           fieldId="login-email"
           placeholder="E-mail"
+          accessibilityLabel="E-mail"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -245,12 +245,13 @@ export function AdminScreen() {
             fieldId="login-password"
             containerStyle={styles.passwordInputContainer}
             placeholder="Senha"
+            accessibilityLabel="Senha"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
             autoCapitalize="none"
           />
-          <Pressable
+          <PressableScale
             style={styles.showPasswordButton}
             onPress={() => setShowPassword((v) => !v)}
             accessibilityRole="button"
@@ -259,7 +260,7 @@ export function AdminScreen() {
             <Text style={styles.showPasswordText}>
               {showPassword ? "Ocultar" : "Mostrar"}
             </Text>
-          </Pressable>
+          </PressableScale>
         </View>
         {loginError ? <Text style={styles.error}>{loginError}</Text> : null}
         <AdminButton label="Entrar" onPress={handleLogin} variant="primary" />
@@ -294,7 +295,18 @@ function Toast({ toast }: { toast: ToastState }) {
         toast.kind === "error" ? styles.toastError : styles.toastSuccess,
         { opacity },
       ]}
+      // `pointerEvents="none"` não bloqueia leitura por leitor de tela —
+      // só impede clique/toque. A live region abaixo é o que faz o
+      // anúncio funcionar (WCAG 4.1.3): `accessibilityLiveRegion`
+      // cobre nativo, `aria-live`/`role` cobrem web (RN Web repassa
+      // props não reconhecidas direto pro DOM).
       pointerEvents="none"
+      accessibilityLiveRegion="polite"
+      accessibilityRole={toast.kind === "error" ? "alert" : "text"}
+      {...({
+        "aria-live": "polite",
+        role: toast.kind === "error" ? "alert" : "status",
+      } as Record<string, string>)}
     >
       <Text
         style={[
@@ -331,19 +343,30 @@ function AdminDashboard({ user }: { user: User }) {
   // (`finalizePendingBulkDelete`). "Desfazer" cancela o timer e os itens
   // reaparecem (nunca chegaram a ser apagados de fato).
   //
-  // Edge case (navegar durante o timer): decidido efetivar a exclusão
-  // na hora, não cancelar silenciosamente — trocar de categoria/aba ou
-  // voltar para o painel inicial finaliza qualquer exclusão pendente de
-  // imediato (`finalizePendingBulkDelete()` chamado nesses handlers).
-  // Cancelar silenciosamente arriscaria o admin achar que apagou e na
-  // real não apagou (ou vice-versa); efetivar de imediato é o
-  // comportamento mais previsível e alinhado ao próprio texto do toast
-  // ("N itens excluídos" já no passado).
+  // A.5 (WCAG 2.2.1 "Timing Adjustable") — comportamento revisado:
+  //
+  // 1) Navegar (trocar de categoria/aba, voltar pro painel inicial) NÃO
+  //    efetiva mais a exclusão silenciosamente. O estado de
+  //    `pendingBulkDelete` mora aqui em `AdminDashboard`, acima de
+  //    `activeTab`/`category`, e o toast de undo (`AdminToast`,
+  //    renderizado fora do conteúdo específico de aba) continua visível
+  //    e o timer continua correndo até expirar de verdade ou até
+  //    "Desfazer" — reversibilidade garantida independente de navegação.
+  //    (Antes: `finalizePendingBulkDelete()` era chamado nos handlers de
+  //    troca de categoria/aba/home, apagando de fato sem novo aviso —
+  //    removido.)
+  // 2) O timer PAUSA enquanto o toast estiver com hover do mouse ou foco
+  //    de teclado (`AdminToast.onPauseTimer`/`onResumeTimer`, acionados
+  //    por `onHoverIn`/`onFocus` e `onHoverOut`/`onBlur`) e RETOMA ao
+  //    sair — extensão de fato, não só cosmética: o `setTimeout`/
+  //    `setInterval` são recriados com o tempo restante.
+  // 3) Base subiu de 7s para 10s (`toast.undoDuration`, `theme/tokens.ts`).
   const [pendingBulkDelete, setPendingBulkDelete] = useState<{
     ids: string[];
     items: ContentItem[];
     category: ContentCategory;
     secondsRemaining: number;
+    paused: boolean;
   } | null>(null);
   const pendingBulkDeleteRef = useRef<typeof pendingBulkDelete>(null);
   const pendingBulkDeleteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -379,24 +402,51 @@ function AdminDashboard({ user }: { user: User }) {
     notify("Restaurado.");
   }
 
+  /** Arma (ou rearma, ao retomar de uma pausa) o `setInterval`/`setTimeout` do
+   * timer de undo pros `secondsRemaining` restantes. */
+  function armPendingBulkDeleteTimers(secondsRemaining: number) {
+    clearPendingBulkDeleteTimers();
+    if (secondsRemaining <= 0) {
+      finalizePendingBulkDelete();
+      return;
+    }
+    pendingBulkDeleteIntervalRef.current = setInterval(() => {
+      setPendingBulkDelete((prev) => (prev ? { ...prev, secondsRemaining: Math.max(0, prev.secondsRemaining - 1) } : prev));
+    }, 1000);
+    pendingBulkDeleteTimeoutRef.current = setTimeout(() => {
+      finalizePendingBulkDelete();
+    }, secondsRemaining * 1000);
+  }
+
+  function pausePendingBulkDeleteTimer() {
+    const pending = pendingBulkDeleteRef.current;
+    if (!pending || pending.paused) return;
+    clearPendingBulkDeleteTimers();
+    setPendingBulkDelete((prev) => (prev ? { ...prev, paused: true } : prev));
+  }
+
+  function resumePendingBulkDeleteTimer() {
+    const pending = pendingBulkDeleteRef.current;
+    if (!pending || !pending.paused) return;
+    setPendingBulkDelete((prev) => (prev ? { ...prev, paused: false } : prev));
+    armPendingBulkDeleteTimers(pending.secondsRemaining);
+  }
+
   function startPendingBulkDelete(itemsToDelete: ContentItem[], forCategory: ContentCategory) {
     // Só uma exclusão pendente por vez — se já havia uma (não deveria
     // acontecer no fluxo normal, já que o modo seleção fecha depois de
     // confirmar), efetiva a anterior antes de iniciar a nova.
     if (pendingBulkDeleteRef.current) finalizePendingBulkDelete();
     const totalMs = semanticTokens.component.toast.undoDuration;
+    const secondsRemaining = Math.ceil(totalMs / 1000);
     setPendingBulkDelete({
       ids: itemsToDelete.map((i) => i.id),
       items: itemsToDelete,
       category: forCategory,
-      secondsRemaining: Math.ceil(totalMs / 1000),
+      secondsRemaining,
+      paused: false,
     });
-    pendingBulkDeleteIntervalRef.current = setInterval(() => {
-      setPendingBulkDelete((prev) => (prev ? { ...prev, secondsRemaining: Math.max(0, prev.secondsRemaining - 1) } : prev));
-    }, 1000);
-    pendingBulkDeleteTimeoutRef.current = setTimeout(() => {
-      finalizePendingBulkDelete();
-    }, totalMs);
+    armPendingBulkDeleteTimers(secondsRemaining);
   }
 
   const [practiceText, setPracticeText] = useState("");
@@ -446,6 +496,14 @@ function AdminDashboard({ user }: { user: User }) {
   // itens antes de qualquer exclusão em lote.
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Refs de A.4 (dialog/foco/trap do modal de importação, WCAG
+  // 2.4.3/4.1.2). `mainContentRef` aponta pro wrapper que envolve TODO
+  // o conteúdo de fundo da tela (fora dos overlays); `modalCardRef`
+  // aponta pro card do modal em si, onde o foco entra/fica preso.
+  const mainContentRef = useRef<View>(null);
+  const modalCardRef = useRef<View>(null);
+  const importTriggerRef = useRef<HTMLElement | null>(null);
 
   const [importOpen, setImportOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
@@ -499,10 +557,11 @@ function AdminDashboard({ user }: { user: User }) {
   const itemsLoading = overviewLoading;
 
   useEffect(() => {
-    // Trocar de categoria com uma exclusão em massa pendente (janela de
-    // undo aberta) efetiva a exclusão na hora, em vez de deixar o timer
-    // correr fora de vista — ver comentário em `startPendingBulkDelete`.
-    if (pendingBulkDeleteRef.current) finalizePendingBulkDelete();
+    // Trocar de categoria NÃO efetiva mais uma exclusão em massa
+    // pendente (janela de undo aberta) — ver comentário em
+    // `pendingBulkDelete` (A.5, WCAG 2.2.1). O timer continua correndo
+    // em segundo plano, visível pelo toast de undo independente da aba/
+    // categoria ativa.
     setConfirmDeleteAll(false);
     setExpandedId(null);
     setConfirmDeleteId(null);
@@ -528,7 +587,8 @@ function AdminDashboard({ user }: { user: User }) {
   // andamento, igual o logo "Mensageiros da Paz" volta pra Home do
   // app público.
   function goToAdminHome() {
-    if (pendingBulkDeleteRef.current) finalizePendingBulkDelete();
+    // Voltar pro painel inicial também não efetiva mais a exclusão
+    // pendente na hora — ver comentário em `pendingBulkDelete` (A.5).
     setActiveTab("library");
     setShowAllLibrary(true);
     setCollapsedOverviewCategories(new Set(CATEGORIES));
@@ -704,6 +764,13 @@ function AdminDashboard({ user }: { user: User }) {
   }
 
   async function openImport() {
+    // Guarda o elemento com foco (o botão "Importar da planilha") pra
+    // devolver o foco a ele quando o modal fechar (A.4, WCAG 2.4.3) —
+    // só existe DOM na web; em nativo isso é undefined e o efeito
+    // abaixo simplesmente não faz nada com ele.
+    if (typeof document !== "undefined") {
+      importTriggerRef.current = document.activeElement as HTMLElement | null;
+    }
     setImportOpen(true);
     setImportLoading(true);
     setImportError(null);
@@ -750,6 +817,80 @@ function AdminDashboard({ user }: { user: User }) {
     setImportResult(null);
     setImportError(null);
   }
+
+  // A.4 — semântica de diálogo/foco/trap do modal de importação (WCAG
+  // 2.4.3/4.1.2). Só roda no web (RN Web expõe `document`; em nativo o
+  // modal já usa `accessibilityViewIsModal` via prop no JSX, que o
+  // sistema operacional trata sozinho — não precisamos reimplementar
+  // trap de Tab em iOS/Android). Ao abrir: esconde o fundo de leitor de
+  // tela (`aria-hidden`/`inert`), move o foco pro primeiro elemento
+  // focável do modal e prende o Tab dentro dele; Escape fecha. Ao
+  // fechar: desfaz tudo e devolve o foco pro gatilho.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const mainEl = mainContentRef.current as unknown as HTMLElement | null;
+    const cardEl = modalCardRef.current as unknown as HTMLElement | null;
+
+    if (!importOpen) {
+      if (mainEl) {
+        mainEl.removeAttribute("aria-hidden");
+        (mainEl as unknown as { inert?: boolean }).inert = false;
+      }
+      return;
+    }
+
+    if (mainEl) {
+      mainEl.setAttribute("aria-hidden", "true");
+      // `inert` (suportado nos navegadores atuais) tira o fundo inteiro
+      // da ordem de tabulação de uma vez, sem precisar percorrer nó a
+      // nó — cai graciosamente pra "não faz nada" em navegadores sem
+      // suporte, e o trap de Tab abaixo ainda cobre esse caso.
+      (mainEl as unknown as { inert?: boolean }).inert = true;
+    }
+
+    function getFocusable(): HTMLElement[] {
+      if (!cardEl) return [];
+      return Array.from(
+        cardEl.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+    }
+
+    const focusables = getFocusable();
+    (focusables[0] ?? cardEl)?.focus();
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeImport();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = getFocusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+      if (mainEl) {
+        mainEl.removeAttribute("aria-hidden");
+        (mainEl as unknown as { inert?: boolean }).inert = false;
+      }
+      importTriggerRef.current?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importOpen]);
 
   function cycleMapping(columnIndex: number) {
     setImportMapping((current) => {
@@ -867,15 +1008,23 @@ function AdminDashboard({ user }: { user: User }) {
       ? sortedItems.filter((i) => !pendingBulkDelete.ids.includes(i.id))
       : sortedItems;
 
-  // Trocar de aba com uma exclusão em massa pendente efetiva na hora —
-  // ver comentário em `startPendingBulkDelete`.
+  // Trocar de aba também não efetiva mais uma exclusão em massa
+  // pendente — ver comentário em `pendingBulkDelete` (A.5).
   function handleSelectTab(tab: Tab) {
-    if (pendingBulkDeleteRef.current) finalizePendingBulkDelete();
     setActiveTab(tab);
   }
 
   return (
     <View style={styles.screen}>
+      {/*
+        Conteúdo de fundo "verdadeiro" da tela (tudo exceto os overlays
+        soltos abaixo — toasts e o modal de importação). Precisa de um
+        wrapper próprio com `ref` pra poder virar `aria-hidden`/`inert`
+        enquanto o modal de importação estiver aberto (A.4, WCAG
+        4.1.2/2.4.3): sem isso, Tab vaza do modal pro banner/Sair/
+        sidebar/abas atrás dele, e leitor de tela ainda "vê" o fundo.
+      */}
+      <View ref={mainContentRef}>
       <View style={styles.headerRow}>
         <PressableScale
           style={styles.adminBanner}
@@ -955,13 +1104,13 @@ function AdminDashboard({ user }: { user: User }) {
           <View style={styles.libraryCard}>
             <View style={styles.libraryCardHeader}>
               <Text style={styles.libraryCardTitle}>Prática da Semana</Text>
-              <Pressable
+              <PressableScale
                 style={styles.sheetButton}
                 onPress={() => Linking.openURL(PRACTICE_SHEET_URL)}
                 accessibilityRole="link"
               >
                 <Text style={styles.sheetButtonText}>Índice de Práticas (planilha) →</Text>
-              </Pressable>
+              </PressableScale>
             </View>
             {practiceLoading ? (
               <LoadingRow count={2} />
@@ -1085,7 +1234,7 @@ function AdminDashboard({ user }: { user: User }) {
               <View style={styles.libraryCardHeader}>
                 <Text style={styles.libraryCardTitle}>{CATEGORY_LABEL[category]}</Text>
                 <View style={styles.libraryCardButtonsRow}>
-                  <Pressable
+                  <PressableScale
                     style={styles.sheetButton}
                     onPress={() => Linking.openURL(CATEGORY_SHEET_URL[category])}
                     accessibilityRole="link"
@@ -1093,14 +1242,14 @@ function AdminDashboard({ user }: { user: User }) {
                     <Text style={styles.sheetButtonText}>
                       Índice de {CATEGORY_LABEL[category]} (planilha) →
                     </Text>
-                  </Pressable>
-                  <Pressable
+                  </PressableScale>
+                  <PressableScale
                     style={styles.importButton}
                     onPress={openImport}
                     accessibilityRole="button"
                   >
                     <Text style={styles.importButtonText}>Importar da planilha</Text>
-                  </Pressable>
+                  </PressableScale>
                 </View>
               </View>
 
@@ -1114,7 +1263,7 @@ function AdminDashboard({ user }: { user: User }) {
                 lista) e empilhado logo abaixo em mobile/tablet — ver
                 `paneB` no `AdminTwoPaneLayout` mais abaixo.
               */}
-              <Pressable
+              <PressableScale
                 style={styles.manualToggle}
                 onPress={() => {
                   if (!manualOpen) startNew();
@@ -1127,7 +1276,7 @@ function AdminDashboard({ user }: { user: User }) {
                   {editingId ? "Editando item" : "Novo item"}
                 </Text>
                 <Chevron expanded={manualOpen} />
-              </Pressable>
+              </PressableScale>
               {!manualOpen ? (
                 <Text style={styles.fieldHint}>
                   Cadastrar ou editar um item de {CATEGORY_LABEL[category]} à mão
@@ -1147,7 +1296,7 @@ function AdminDashboard({ user }: { user: User }) {
                   const selected = selectedIds.has(item.id);
                   return (
                     <View key={item.id} style={styles.accordionCard}>
-                      <Pressable
+                      <PressableScale
                         style={styles.accordionHeader}
                         onPress={() =>
                           selectMode
@@ -1170,7 +1319,7 @@ function AdminDashboard({ user }: { user: User }) {
                           </View>
                         </View>
                         {!selectMode ? <Chevron expanded={expanded} /> : null}
-                      </Pressable>
+                      </PressableScale>
 
                       {expanded && !selectMode ? (
                         <View style={styles.accordionBody}>
@@ -1251,13 +1400,13 @@ function AdminDashboard({ user }: { user: User }) {
                   ) : (
                     <>
                       <View style={styles.selectBar}>
-                        <Pressable onPress={toggleSelectAll} accessibilityRole="button">
+                        <PressableScale onPress={toggleSelectAll} accessibilityRole="button">
                           <Text style={styles.link}>
                             {selectedIds.size === sortedItems.length
                               ? "Desmarcar todos"
                               : "Selecionar todos"}
                           </Text>
-                        </Pressable>
+                        </PressableScale>
                         <Text style={styles.itemMeta}>
                           {selectedIds.size} de {sortedItems.length} selecionado(s)
                         </Text>
@@ -1315,12 +1464,14 @@ function AdminDashboard({ user }: { user: User }) {
               <AdminInput
                 fieldId="item-title"
                 placeholder="Título"
+                accessibilityLabel="Título"
                 value={form.title}
                 onChangeText={(title) => setForm((f) => ({ ...f, title }))}
               />
               <AdminInput
                 fieldId="item-description"
                 placeholder="Descrição (ex: Autor · Ano)"
+                accessibilityLabel="Descrição"
                 value={form.description}
                 onChangeText={(description) => setForm((f) => ({ ...f, description }))}
               />
@@ -1345,13 +1496,14 @@ function AdminDashboard({ user }: { user: User }) {
               <AdminTextArea
                 fieldId="item-text"
                 placeholder="Cole aqui o texto completo, se houver"
+                accessibilityLabel="Texto direto"
                 value={form.text}
                 onChangeText={(text) => setForm((f) => ({ ...f, text }))}
               />
 
               <View style={styles.categoryRow}>
                 {(["upload", "streaming"] as ContentSource[]).map((s) => (
-                  <Pressable
+                  <PressableScale
                     key={s}
                     style={[styles.categoryChip, form.source === s && styles.categoryChipActive]}
                     onPress={() => setForm((f) => ({ ...f, source: s }))}
@@ -1365,7 +1517,7 @@ function AdminDashboard({ user }: { user: User }) {
                     >
                       {s === "upload" ? "Arquivo (qualquer link direto)" : "Streaming de música"}
                     </Text>
-                  </Pressable>
+                  </PressableScale>
                 ))}
               </View>
 
@@ -1379,13 +1531,14 @@ function AdminDashboard({ user }: { user: User }) {
                   <AdminInput
                     fieldId="item-file-url"
                     placeholder="https://drive.google.com/... ou https://mensageiros-da-paz.pages.dev/content/..."
+                    accessibilityLabel="Link direto do arquivo"
                     value={form.fileUrl}
                     onChangeText={(fileUrl) => setForm((f) => ({ ...f, fileUrl }))}
                     autoCapitalize="none"
                   />
                   <View style={styles.categoryRow}>
                     {(["pdf", "image", "audio", "gdoc", "txt"] as FileType[]).map((ft) => (
-                      <Pressable
+                      <PressableScale
                         key={ft}
                         style={[styles.categoryChip, form.fileType === ft && styles.categoryChipActive]}
                         onPress={() => setForm((f) => ({ ...f, fileType: ft }))}
@@ -1399,7 +1552,7 @@ function AdminDashboard({ user }: { user: User }) {
                         >
                           {ft.toUpperCase()}
                         </Text>
-                      </Pressable>
+                      </PressableScale>
                     ))}
                   </View>
                   {form.fileType === "audio" ? (
@@ -1447,6 +1600,7 @@ function AdminDashboard({ user }: { user: User }) {
                       <AdminInput
                         fieldId="item-cover-url"
                         placeholder="https://drive.google.com/... (imagem da capa)"
+                        accessibilityLabel="Link da imagem da capa"
                         value={form.coverImageUrl}
                         onChangeText={(coverImageUrl) => setForm((f) => ({ ...f, coverImageUrl }))}
                         autoCapitalize="none"
@@ -1463,7 +1617,7 @@ function AdminDashboard({ user }: { user: User }) {
                   </Text>
                   <View style={styles.categoryRow}>
                     {STREAMING_PROVIDERS.map((p) => (
-                      <Pressable
+                      <PressableScale
                         key={p}
                         style={[
                           styles.categoryChip,
@@ -1480,12 +1634,13 @@ function AdminDashboard({ user }: { user: User }) {
                         >
                           {STREAMING_PROVIDER_LABEL[p]}
                         </Text>
-                      </Pressable>
+                      </PressableScale>
                     ))}
                   </View>
                   <AdminInput
                     fieldId="item-streaming-url"
                     placeholder="https://open.spotify.com/track/... (ou link da plataforma escolhida)"
+                    accessibilityLabel="Link de streaming"
                     value={form.streamingUrl}
                     onChangeText={(streamingUrl) => setForm((f) => ({ ...f, streamingUrl }))}
                     autoCapitalize="none"
@@ -1499,6 +1654,7 @@ function AdminDashboard({ user }: { user: User }) {
               <AdminInput
                 fieldId="item-order"
                 placeholder="Ordem (número)"
+                accessibilityLabel="Ordem"
                 value={String(form.order)}
                 onChangeText={(v) => setForm((f) => ({ ...f, order: Number(v) || 0 }))}
                 keyboardType="numeric"
@@ -1537,6 +1693,7 @@ function AdminDashboard({ user }: { user: User }) {
           ) : null
         }
       />
+      </View>
 
       <Toast toast={toast} />
 
@@ -1548,21 +1705,45 @@ function AdminDashboard({ user }: { user: User }) {
             actionLabel="Desfazer"
             onAction={cancelPendingBulkDelete}
             secondsRemaining={pendingBulkDelete.secondsRemaining}
+            onPauseTimer={pausePendingBulkDeleteTimer}
+            onResumeTimer={resumePendingBulkDeleteTimer}
           />
         </View>
       ) : null}
 
       {importOpen ? (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View
+            ref={modalCardRef}
+            style={styles.modalCard}
+            // iOS/Android: o SO trata o modal como uma "ilha" de foco
+            // separada da tela por trás (`accessibilityViewIsModal`).
+            // Web: `role="dialog"` + `aria-modal` + `aria-labelledby`
+            // dão a semântica de diálogo pro leitor de tela; o
+            // trap/foco em si é feito no `useEffect` acima (RN Web
+            // repassa `role`/`aria-*`/`tabIndex` direto pro DOM).
+            accessibilityViewIsModal
+            accessibilityRole="none"
+            accessibilityLabel={`Importar ${CATEGORY_LABEL[category]}`}
+            {...({
+              role: "dialog",
+              "aria-modal": "true",
+              "aria-labelledby": "import-modal-title",
+              tabIndex: -1,
+            } as Record<string, string | number>)}
+          >
             <ScrollView contentContainerStyle={styles.modalScrollContent}>
               <View style={styles.headerRow}>
-                <Text style={styles.libraryCardTitle}>
+                <Text
+                  style={styles.libraryCardTitle}
+                  nativeID="import-modal-title"
+                  accessibilityRole="header"
+                >
                   Importar {CATEGORY_LABEL[category]}
                 </Text>
-                <Pressable onPress={closeImport} accessibilityRole="button">
+                <PressableScale onPress={closeImport} accessibilityRole="button">
                   <Text style={styles.link}>Fechar</Text>
-                </Pressable>
+                </PressableScale>
               </View>
 
               {importLoading ? (
@@ -1582,7 +1763,7 @@ function AdminDashboard({ user }: { user: User }) {
                   </Text>
                   <View style={styles.categoryRow}>
                     {importHeaders.map((header, columnIndex) => (
-                      <Pressable
+                      <PressableScale
                         key={`${header}-${columnIndex}`}
                         style={[
                           styles.categoryChip,
@@ -1602,7 +1783,7 @@ function AdminDashboard({ user }: { user: User }) {
                           {header || `Coluna ${columnIndex + 1}`}:{" "}
                           {IMPORT_FIELD_LABEL[importMapping[columnIndex] ?? "ignore"]}
                         </Text>
-                      </Pressable>
+                      </PressableScale>
                     ))}
                   </View>
 
@@ -1611,7 +1792,7 @@ function AdminDashboard({ user }: { user: User }) {
                       Selecione as linhas que quer importar ({importSelected.size} de{" "}
                       {importRows.length}):
                     </Text>
-                    <Pressable
+                    <PressableScale
                       onPress={() =>
                         setImportSelected((current) =>
                           current.size === importRows.length
@@ -1626,13 +1807,13 @@ function AdminDashboard({ user }: { user: User }) {
                           ? "Desmarcar todos"
                           : "Selecionar todos"}
                       </Text>
-                    </Pressable>
+                    </PressableScale>
                   </View>
                   {importRows.map((row, rowIndex) => {
                     const title = valueForField(row, "title") || "(sem título)";
                     const description = valueForField(row, "description");
                     return (
-                      <Pressable
+                      <PressableScale
                         key={rowIndex}
                         style={styles.importRow}
                         onPress={() => toggleRowSelected(rowIndex)}
@@ -1660,7 +1841,7 @@ function AdminDashboard({ user }: { user: User }) {
                             <Text style={styles.itemDescription}>{description}</Text>
                           ) : null}
                         </View>
-                      </Pressable>
+                      </PressableScale>
                     );
                   })}
 
@@ -1668,7 +1849,7 @@ function AdminDashboard({ user }: { user: User }) {
                     <Text style={styles.success}>{importResult}</Text>
                   ) : null}
 
-                  <Pressable
+                  <PressableScale
                     style={[
                       styles.primaryButton,
                       (importRunning || importSelected.size === 0) && styles.buttonDisabled,
@@ -1682,7 +1863,7 @@ function AdminDashboard({ user }: { user: User }) {
                         ? "Importando…"
                         : `Importar ${importSelected.size} selecionado(s)`}
                     </Text>
-                  </Pressable>
+                  </PressableScale>
                 </>
               )}
             </ScrollView>

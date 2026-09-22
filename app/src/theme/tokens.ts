@@ -151,6 +151,9 @@ export const semanticTokens = {
         cardAlt: colors.background,
       },
     },
+    // A.6 (preventivo, audit-design): nenhuma chave aqui deve apontar
+    // pra `colors.accent` (Sage) — Sage é reservado a fundo/confirmação
+    // (ex.: `feedback.success.bg`), não a texto.
     text: {
       primary: colors.textPrimary,
       secondary: colors.textSecondary,
@@ -203,7 +206,10 @@ export const semanticTokens = {
     minFont: minFontSize,
   },
   component: {
-    toast: { undoDuration: 7000 },
+    // A.5 (WCAG 2.2.1 "Timing Adjustable"): base subiu de 7s para 10s, e
+    // o timer agora pausa/retoma com hover/foco do toast de undo (ver
+    // `AdminScreen.tsx`, `pendingBulkDelete`/`AdminToast`).
+    toast: { undoDuration: 10000 },
     input: { textareaMinHeight: 96 },
     sidebar: { width: 240 },
     panelA: { width: "38%", maxWidth: 420 },

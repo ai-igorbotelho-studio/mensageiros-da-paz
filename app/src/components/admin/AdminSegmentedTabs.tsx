@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
 
@@ -29,19 +29,35 @@ export function AdminSegmentedTabs<K extends string = string>({
     <View style={styles.tabRow} accessibilityRole="tablist">
       {tabs.map((tab) => {
         const active = tab.key === activeKey;
-        return (
-          <Pressable
-            key={tab.key}
-            style={[styles.tab, active && styles.tabActive]}
-            onPress={() => onSelect(tab.key)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-          >
-            <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
-          </Pressable>
-        );
+        return <SegmentedTabItem key={tab.key} tab={tab} active={active} onSelect={onSelect} />;
       })}
     </View>
+  );
+}
+
+/** Item isolado em componente próprio só pra poder ter `useState` de foco
+ * (WCAG 2.4.7) sem violar as regras de hooks dentro do `.map` do pai. */
+function SegmentedTabItem<K extends string>({
+  tab,
+  active,
+  onSelect,
+}: {
+  tab: AdminSegmentedTab<K>;
+  active: boolean;
+  onSelect: (key: K) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <Pressable
+      style={[styles.tab, active && styles.tabActive, focused && styles.tabFocused]}
+      onPress={() => onSelect(tab.key)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+    >
+      <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
+    </Pressable>
   );
 }
 
@@ -72,6 +88,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
+  tabFocused: {
+    outlineWidth: 2,
+    outlineStyle: "solid",
+    outlineColor: colors.primary,
+    outlineOffset: 2,
+  } as object,
   tabText: {
     fontFamily: fonts.bodyFallback,
     fontSize: 13,
