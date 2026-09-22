@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { colors, fonts, spacing } from "@/theme/tokens";
+import { colors, fonts } from "@/theme/tokens";
 import { getDayInfo } from "@/utils/skyInfo";
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // checa a cada hora se o dia virou

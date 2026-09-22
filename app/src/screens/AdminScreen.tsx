@@ -88,10 +88,10 @@ import type {
 // (`colors.adminBackground`/`colors.adminSurface`) pelo
 // design-system-engineer (2026-09-21, `design/04-design-system-spec.md`
 // §3.3) — mesmos valores (#EFE8DD / #FBF7F1), sem mudança visual, só
-// elimina a duplicação de fonte da verdade. Aliases locais mantidos
-// para não tocar todo o arquivo de estilos abaixo.
+// elimina a duplicação de fonte da verdade. Alias local de `ADMIN_BG`
+// mantido para não tocar todo o arquivo de estilos abaixo; os estilos
+// que precisam da superfície usam `colors.adminSurface` direto.
 const ADMIN_BG = colors.adminBackground;
-const ADMIN_SURFACE = colors.adminSurface;
 
 const CATEGORIES: ContentCategory[] = ["oracoes", "musicas", "textos", "livros"];
 const CATEGORY_LABEL: Record<ContentCategory, string> = {
@@ -189,7 +189,7 @@ const EMPTY_FORM: ItemFormValues = {
 // um fluxo por categoria.
 type Tab = "practice" | "library" | "guide";
 
-const TABS: Array<{ key: Tab; label: string }> = [
+const TABS: { key: Tab; label: string }[] = [
   { key: "practice", label: "Prática da Semana" },
   { key: "library", label: "Biblioteca" },
   { key: "guide", label: "Guia do Admin" },

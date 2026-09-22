@@ -87,7 +87,7 @@ export const IMPORT_FIELD_LABEL: Record<ImportField, string> = {
 // `coverImageUrl` é checado ANTES de `fileUrl`: um cabeçalho como
 // "Link para capa" bate em ambos os padrões, mas é a capa, não o
 // arquivo principal — a ordem do array decide qual ganha.
-const HEADER_GUESSES: Array<{ field: ImportField; patterns: RegExp[] }> = [
+const HEADER_GUESSES: { field: ImportField; patterns: RegExp[] }[] = [
   { field: "title", patterns: [/t[ií]tulo/i, /nome/i, /name/i] },
   { field: "description", patterns: [/autor/i, /descri[cç][aã]o/i, /author/i] },
   { field: "text", patterns: [/texto/i, /conte[uú]do/i, /letra/i] },
