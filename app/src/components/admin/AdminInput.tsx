@@ -114,16 +114,33 @@ const styles = StyleSheet.create({
     paddingVertical: t.space.stack.field,
     backgroundColor: t.color.surface.admin.card,
     color: t.color.text.primary,
+    // Suprime o outline padrão do browser (preto, quadrado) o tempo
+    // todo — sem isso, mesmo sem foco, o navegador reserva/aplica seu
+    // próprio outline em cima do nosso, cortando o efeito abaixo. Só
+    // tem efeito no DOM/web, ignorado em nativo (mesmo padrão do
+    // `focusRingStyle` de `PressableScale`).
+    outlineWidth: 0,
     ...t.type.body,
-  },
+  } as ViewStyle,
   textArea: {
     minHeight: t.component.input.textareaMinHeight,
     textAlignVertical: "top",
   },
+  // Bug de a11y corrigido (consistência do anel de foco, achado do
+  // qa-cross-browser 2026-09-22): antes só trocava borderWidth/Color no
+  // foco, então o outline nativo (preto/quadrado) do browser aparecia
+  // por cima, divergindo do anel Mulberry de 2px com offset usado nos
+  // botões (`PressableScale`). Agora replica o mesmo `outline` — a
+  // borda em si continua mudando pra 2px (reforço visível também sem
+  // depender de outline, ex. em leitores/zoom que o escondem).
   inputFocused: {
     borderWidth: 2,
     borderColor: t.color.action.primary.bg,
-  },
+    outlineWidth: 2,
+    outlineStyle: "solid",
+    outlineColor: t.color.focus.ring,
+    outlineOffset: 2,
+  } as ViewStyle,
   inputError: {
     borderColor: t.color.border.danger,
   },

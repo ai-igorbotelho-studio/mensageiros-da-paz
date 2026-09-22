@@ -109,6 +109,24 @@ export function RootNavigator() {
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Ir para a Home"
+              // tabIndex=1 (bug de auditoria a11y 2026-09-22, WCAG 2.4.3):
+              // o header (React Navigation) monta DEPOIS do conteúdo da
+              // tela no DOM em RN Web, então por padrão (tabIndex
+              // implícito 0) ele só recebe foco por Tab no FINAL, depois
+              // de tudo — invertendo a ordem visual (header no topo).
+              // Reordenar o próprio Navigator é arriscado (afeta toda
+              // tela); em vez disso, um tabIndex positivo (>0) tira este
+              // elemento da ordem "natural" (0) e o coloca primeiro na
+              // sequência de Tab, alinhando foco com a leitura visual sem
+              // mexer em montagem/DOM. É o único tabIndex>0 do app — não
+              // há outros elementos com tabIndex explícito com quem possa
+              // conflitar/entrelaçar.
+              // RN tipa `tabIndex` como `0 | -1 | undefined` (só cobre o
+              // caso nativo de excluir da ordem de foco); no DOM/RN Web
+              // qualquer inteiro é válido — mesmo `as` usado alhures no
+              // arquivo pra props que passam direto pro DOM (ex.: Toast
+              // `aria-live` em AdminScreen.tsx).
+              {...({ tabIndex: 1 } as unknown as { tabIndex: 0 | -1 })}
             >
               <Text
                 style={{

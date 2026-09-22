@@ -224,6 +224,7 @@ export function AdminScreen() {
   if (!user) {
     return (
       <View style={styles.loginContainer}>
+        <View style={styles.loginContent}>
         <View style={[styles.adminBanner, styles.adminBannerStatic]}>
           <Text style={styles.adminBannerText}>Painel administrativo</Text>
         </View>
@@ -264,6 +265,7 @@ export function AdminScreen() {
         </View>
         {loginError ? <Text style={styles.error}>{loginError}</Text> : null}
         <AdminButton label="Entrar" onPress={handleLogin} variant="primary" />
+        </View>
       </View>
     );
   }
@@ -1912,6 +1914,17 @@ const styles = StyleSheet.create({
     backgroundColor: ADMIN_BG,
     padding: spacing.lg,
   },
+  // Teto de leitura pro formulário de login (bug de auditoria
+  // 2026-09-22): sem isso, em telas ultrawide (1920px) os campos
+  // esticavam ~1870px de largura. `width:"100%"` garante que em telas
+  // estreitas (320px) ele continua ocupando toda a largura disponível
+  // (o `maxWidth` só entra em ação acima de ~480px); `alignSelf:"center"`
+  // centraliza o bloco quando há espaço sobrando.
+  loginContent: {
+    width: "100%",
+    maxWidth: 480,
+    alignSelf: "center",
+  },
   scrollContent: {
     paddingBottom: spacing.xxl,
   },
@@ -2380,7 +2393,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radii.md,
     marginBottom: spacing.xs,
-    overflow: "hidden",
+    // Sem overflow:"hidden" (bug de auditoria a11y 2026-09-22): cortava o
+    // anel de foco (WCAG 2.4.7) dos PressableScale filhos, que é
+    // desenhado 2px PARA FORA da borda (outlineOffset). Não é necessário
+    // pra manter o visual arredondado: os filhos (toggle/goButton) não
+    // têm backgroundColor próprio, então o fundo/raio deste container já
+    // aparece corretamente por trás deles sem precisar de clipping.
   },
   overviewGroupToggle: {
     flex: 1,
@@ -2469,7 +2487,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primaryLight,
     marginBottom: spacing.xs,
-    overflow: "hidden",
+    // Sem overflow:"hidden" (mesmo motivo do overviewGroupHeader acima):
+    // cortava o anel de foco do PressableScale do accordionHeader. O
+    // header/body são transparentes por cima do fundo do próprio card,
+    // que já respeita seu borderRadius nativamente.
   },
   accordionHeader: {
     flexDirection: "row",
