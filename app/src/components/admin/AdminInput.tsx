@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import { StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from "react-native";
 import { semanticTokens as t } from "@/theme/tokens";
 
 export interface AdminInputProps
@@ -10,6 +10,8 @@ export interface AdminInputProps
   multiline?: boolean;
   /** Identificador estável usado para ligar label/erro via `aria-*`. */
   fieldId?: string;
+  /** Estilo extra do container externo (ex.: `flex: 1` num par lado a lado). */
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
 /**
@@ -25,13 +27,14 @@ export function AdminInput({
   multiline = false,
   fieldId,
   editable = true,
+  containerStyle,
   ...inputProps
 }: AdminInputProps) {
   const [focused, setFocused] = useState(false);
   const describedBy = error ? `${fieldId ?? "admin-input"}-error` : hint ? `${fieldId ?? "admin-input"}-hint` : undefined;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {label ? (
         <Text nativeID={fieldId ? `${fieldId}-label` : undefined} style={styles.label}>
           {label}
