@@ -43,32 +43,35 @@ interface Props extends Omit<PressableProps, "children" | "style"> {
  * (bug relatado 2026-09-21: card de item da lista com o badge
  * esticando a largura toda em vez de ficar ao lado do texto).
  */
-export function PressableScale({ style, children, onFocus, onBlur, ...props }: Props) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const [focused, setFocused] = useState(false);
+export const PressableScale = React.forwardRef<React.ElementRef<typeof Pressable>, Props>(
+  function PressableScale({ style, children, onFocus, onBlur, ...props }, ref) {
+    const scale = useRef(new Animated.Value(1)).current;
+    const [focused, setFocused] = useState(false);
 
-  function animateTo(value: number) {
-    Animated.spring(scale, { toValue: value, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+    function animateTo(value: number) {
+      Animated.spring(scale, { toValue: value, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+    }
+
+    return (
+      <AnimatedPressable
+        ref={ref}
+        onPressIn={() => animateTo(0.96)}
+        onPressOut={() => animateTo(1)}
+        onHoverIn={() => animateTo(1.02)}
+        onHoverOut={() => animateTo(1)}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
+        style={[style, { transform: [{ scale }] }, focused && focusRingStyle]}
+        {...props}
+      >
+        {children}
+      </AnimatedPressable>
+    );
   }
-
-  return (
-    <AnimatedPressable
-      onPressIn={() => animateTo(0.96)}
-      onPressOut={() => animateTo(1)}
-      onHoverIn={() => animateTo(1.02)}
-      onHoverOut={() => animateTo(1)}
-      onFocus={(e) => {
-        setFocused(true);
-        onFocus?.(e);
-      }}
-      onBlur={(e) => {
-        setFocused(false);
-        onBlur?.(e);
-      }}
-      style={[style, { transform: [{ scale }] }, focused && focusRingStyle]}
-      {...props}
-    >
-      {children}
-    </AnimatedPressable>
-  );
-}
+);
