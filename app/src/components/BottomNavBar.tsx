@@ -6,11 +6,11 @@ import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/Category
 import { PressableScale } from "@/components/PressableScale";
 import type { ContentCategory, RootStackParamList } from "@/types";
 
-const TABS: Array<{
+const TABS: {
   label: string;
   category: ContentCategory;
   Icon: typeof PrayerIcon;
-}> = [
+}[] = [
   { label: "Orações", category: "oracoes", Icon: PrayerIcon },
   { label: "Livros", category: "livros", Icon: BookIcon },
   { label: "Músicas", category: "musicas", Icon: MusicIcon },

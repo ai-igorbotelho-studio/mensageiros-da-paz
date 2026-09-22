@@ -2,19 +2,27 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Linking,
-  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import type { User } from "firebase/auth";
-import { colors, fonts, minTouchSize, radii, spacing } from "@/theme/tokens";
+import { colors, fonts, minTouchSize, radii, semanticTokens, spacing } from "@/theme/tokens";
 import { AdminGuideEmbed } from "@/components/AdminGuideEmbed";
 import { BookIcon, MusicIcon, PrayerIcon, TextIcon } from "@/components/CategoryIcons";
 import { PressableScale } from "@/components/PressableScale";
+import { AdminTwoPaneLayout, useAdminBreakpoint } from "@/components/admin/AdminTwoPaneLayout";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminSegmentedTabs } from "@/components/admin/AdminSegmentedTabs";
+import { AdminButton } from "@/components/admin/AdminButton";
+import { AdminInput, AdminTextArea } from "@/components/admin/AdminInput";
+import { AdminToast } from "@/components/admin/AdminToast";
+import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { LoadingRow } from "@/components/admin/LoadingRow";
+import { StatusBadge } from "@/components/admin/StatusBadge";
+import { CategoryChip } from "@/components/admin/CategoryChip";
 import {
   adminCreateItem,
   adminDeleteItem,
@@ -76,8 +84,14 @@ import type {
 // "Painel Administrativo" no topo reforça isso sem depender só da cor
 // de fundo. Paleta/marca (Mulberry, Sage, Lora/Lexend) continuam as
 // mesmas — só a composição muda.
-const ADMIN_BG = "#EFE8DD";
-const ADMIN_SURFACE = "#FBF7F1";
+// `ADMIN_BG`/`ADMIN_SURFACE` foram movidos pra `theme/tokens.ts`
+// (`colors.adminBackground`/`colors.adminSurface`) pelo
+// design-system-engineer (2026-09-21, `design/04-design-system-spec.md`
+// §3.3) — mesmos valores (#EFE8DD / #FBF7F1), sem mudança visual, só
+// elimina a duplicação de fonte da verdade. Alias local de `ADMIN_BG`
+// mantido para não tocar todo o arquivo de estilos abaixo; os estilos
+// que precisam da superfície usam `colors.adminSurface` direto.
+const ADMIN_BG = colors.adminBackground;
 
 const CATEGORIES: ContentCategory[] = ["oracoes", "musicas", "textos", "livros"];
 const CATEGORY_LABEL: Record<ContentCategory, string> = {
@@ -175,7 +189,7 @@ const EMPTY_FORM: ItemFormValues = {
 // um fluxo por categoria.
 type Tab = "practice" | "library" | "guide";
 
-const TABS: Array<{ key: Tab; label: string }> = [
+const TABS: { key: Tab; label: string }[] = [
   { key: "practice", label: "Prática da Semana" },
   { key: "library", label: "Biblioteca" },
   { key: "guide", label: "Guia do Admin" },
@@ -210,6 +224,7 @@ export function AdminScreen() {
   if (!user) {
     return (
       <View style={styles.loginContainer}>
+        <View style={styles.loginContent}>
         <View style={[styles.adminBanner, styles.adminBannerStatic]}>
           <Text style={styles.adminBannerText}>Painel administrativo</Text>
         </View>
@@ -217,26 +232,27 @@ export function AdminScreen() {
         <Text style={styles.helper}>
           Entre com a conta criada no Firebase Authentication.
         </Text>
-        <TextInput
-          style={styles.input}
+        <AdminInput
+          fieldId="login-email"
           placeholder="E-mail"
-          placeholderTextColor={colors.textSecondary}
+          accessibilityLabel="E-mail"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
         />
         <View style={styles.passwordRow}>
-          <TextInput
-            style={[styles.input, styles.passwordInput]}
+          <AdminInput
+            fieldId="login-password"
+            containerStyle={styles.passwordInputContainer}
             placeholder="Senha"
-            placeholderTextColor={colors.textSecondary}
+            accessibilityLabel="Senha"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
             autoCapitalize="none"
           />
-          <Pressable
+          <PressableScale
             style={styles.showPasswordButton}
             onPress={() => setShowPassword((v) => !v)}
             accessibilityRole="button"
@@ -245,12 +261,11 @@ export function AdminScreen() {
             <Text style={styles.showPasswordText}>
               {showPassword ? "Ocultar" : "Mostrar"}
             </Text>
-          </Pressable>
+          </PressableScale>
         </View>
         {loginError ? <Text style={styles.error}>{loginError}</Text> : null}
-        <Pressable style={styles.primaryButton} onPress={handleLogin} accessibilityRole="button">
-          <Text style={styles.primaryButtonText}>Entrar</Text>
-        </Pressable>
+        <AdminButton label="Entrar" onPress={handleLogin} variant="primary" />
+        </View>
       </View>
     );
   }
@@ -282,7 +297,18 @@ function Toast({ toast }: { toast: ToastState }) {
         toast.kind === "error" ? styles.toastError : styles.toastSuccess,
         { opacity },
       ]}
+      // `pointerEvents="none"` não bloqueia leitura por leitor de tela —
+      // só impede clique/toque. A live region abaixo é o que faz o
+      // anúncio funcionar (WCAG 4.1.3): `accessibilityLiveRegion`
+      // cobre nativo, `aria-live`/`role` cobrem web (RN Web repassa
+      // props não reconhecidas direto pro DOM).
       pointerEvents="none"
+      accessibilityLiveRegion="polite"
+      accessibilityRole={toast.kind === "error" ? "alert" : "text"}
+      {...({
+        "aria-live": "polite",
+        role: toast.kind === "error" ? "alert" : "status",
+      } as Record<string, string>)}
     >
       <Text
         style={[
@@ -303,11 +329,126 @@ function Chevron({ expanded }: { expanded: boolean }) {
 }
 
 function AdminDashboard({ user }: { user: User }) {
+  const breakpoint = useAdminBreakpoint();
+  const isDesktop = breakpoint === "desktop";
   const [activeTab, setActiveTab] = useState<Tab>("practice");
   const [toast, setToast] = useState<ToastState>(null);
 
   function notify(message: string, kind: "success" | "error" = "success") {
     setToast({ message, kind });
+  }
+
+  // Undo real na exclusão em massa (decisão 4 do Head + design/04 §4.9/
+  // §4.12): ao confirmar "Excluir N itens", os itens somem da tela na
+  // hora (filtrados de `sortedItems` via `pendingBulkDelete.ids`), mas a
+  // exclusão no Firestore só é efetivada quando o timer expira
+  // (`finalizePendingBulkDelete`). "Desfazer" cancela o timer e os itens
+  // reaparecem (nunca chegaram a ser apagados de fato).
+  //
+  // A.5 (WCAG 2.2.1 "Timing Adjustable") — comportamento revisado:
+  //
+  // 1) Navegar (trocar de categoria/aba, voltar pro painel inicial) NÃO
+  //    efetiva mais a exclusão silenciosamente. O estado de
+  //    `pendingBulkDelete` mora aqui em `AdminDashboard`, acima de
+  //    `activeTab`/`category`, e o toast de undo (`AdminToast`,
+  //    renderizado fora do conteúdo específico de aba) continua visível
+  //    e o timer continua correndo até expirar de verdade ou até
+  //    "Desfazer" — reversibilidade garantida independente de navegação.
+  //    (Antes: `finalizePendingBulkDelete()` era chamado nos handlers de
+  //    troca de categoria/aba/home, apagando de fato sem novo aviso —
+  //    removido.)
+  // 2) O timer PAUSA enquanto o toast estiver com hover do mouse ou foco
+  //    de teclado (`AdminToast.onPauseTimer`/`onResumeTimer`, acionados
+  //    por `onHoverIn`/`onFocus` e `onHoverOut`/`onBlur`) e RETOMA ao
+  //    sair — extensão de fato, não só cosmética: o `setTimeout`/
+  //    `setInterval` são recriados com o tempo restante.
+  // 3) Base subiu de 7s para 10s (`toast.undoDuration`, `theme/tokens.ts`).
+  const [pendingBulkDelete, setPendingBulkDelete] = useState<{
+    ids: string[];
+    items: ContentItem[];
+    category: ContentCategory;
+    secondsRemaining: number;
+    paused: boolean;
+  } | null>(null);
+  const pendingBulkDeleteRef = useRef<typeof pendingBulkDelete>(null);
+  const pendingBulkDeleteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingBulkDeleteIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  pendingBulkDeleteRef.current = pendingBulkDelete;
+
+  function clearPendingBulkDeleteTimers() {
+    if (pendingBulkDeleteTimeoutRef.current) clearTimeout(pendingBulkDeleteTimeoutRef.current);
+    if (pendingBulkDeleteIntervalRef.current) clearInterval(pendingBulkDeleteIntervalRef.current);
+    pendingBulkDeleteTimeoutRef.current = null;
+    pendingBulkDeleteIntervalRef.current = null;
+  }
+
+  async function finalizePendingBulkDelete() {
+    const pending = pendingBulkDeleteRef.current;
+    if (!pending) return;
+    clearPendingBulkDeleteTimers();
+    setPendingBulkDelete(null);
+    try {
+      for (const item of pending.items) {
+        await adminDeleteItem(item.id);
+        syncItemDeleteToSheet(item.category, item.title, user.email ?? "admin");
+      }
+      refreshCounts();
+    } catch {
+      notify("Não foi possível concluir a exclusão de alguns itens.", "error");
+    }
+  }
+
+  function cancelPendingBulkDelete() {
+    clearPendingBulkDeleteTimers();
+    setPendingBulkDelete(null);
+    notify("Restaurado.");
+  }
+
+  /** Arma (ou rearma, ao retomar de uma pausa) o `setInterval`/`setTimeout` do
+   * timer de undo pros `secondsRemaining` restantes. */
+  function armPendingBulkDeleteTimers(secondsRemaining: number) {
+    clearPendingBulkDeleteTimers();
+    if (secondsRemaining <= 0) {
+      finalizePendingBulkDelete();
+      return;
+    }
+    pendingBulkDeleteIntervalRef.current = setInterval(() => {
+      setPendingBulkDelete((prev) => (prev ? { ...prev, secondsRemaining: Math.max(0, prev.secondsRemaining - 1) } : prev));
+    }, 1000);
+    pendingBulkDeleteTimeoutRef.current = setTimeout(() => {
+      finalizePendingBulkDelete();
+    }, secondsRemaining * 1000);
+  }
+
+  function pausePendingBulkDeleteTimer() {
+    const pending = pendingBulkDeleteRef.current;
+    if (!pending || pending.paused) return;
+    clearPendingBulkDeleteTimers();
+    setPendingBulkDelete((prev) => (prev ? { ...prev, paused: true } : prev));
+  }
+
+  function resumePendingBulkDeleteTimer() {
+    const pending = pendingBulkDeleteRef.current;
+    if (!pending || !pending.paused) return;
+    setPendingBulkDelete((prev) => (prev ? { ...prev, paused: false } : prev));
+    armPendingBulkDeleteTimers(pending.secondsRemaining);
+  }
+
+  function startPendingBulkDelete(itemsToDelete: ContentItem[], forCategory: ContentCategory) {
+    // Só uma exclusão pendente por vez — se já havia uma (não deveria
+    // acontecer no fluxo normal, já que o modo seleção fecha depois de
+    // confirmar), efetiva a anterior antes de iniciar a nova.
+    if (pendingBulkDeleteRef.current) finalizePendingBulkDelete();
+    const totalMs = semanticTokens.component.toast.undoDuration;
+    const secondsRemaining = Math.ceil(totalMs / 1000);
+    setPendingBulkDelete({
+      ids: itemsToDelete.map((i) => i.id),
+      items: itemsToDelete,
+      category: forCategory,
+      secondsRemaining,
+      paused: false,
+    });
+    armPendingBulkDeleteTimers(secondsRemaining);
   }
 
   const [practiceText, setPracticeText] = useState("");
@@ -350,7 +491,6 @@ function AdminDashboard({ user }: { user: User }) {
   // procurando por este título (o do formulário pode ter mudado).
   const [editingOriginalTitle, setEditingOriginalTitle] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [deletingAll, setDeletingAll] = useState(false);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   // "Apagar todos" virou "selecionar e apagar" (2026-09-21, a pedido do
   // Head): um botão único apagando a categoria inteira num toque era
@@ -358,6 +498,14 @@ function AdminDashboard({ user }: { user: User }) {
   // itens antes de qualquer exclusão em lote.
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Refs de A.4 (dialog/foco/trap do modal de importação, WCAG
+  // 2.4.3/4.1.2). `mainContentRef` aponta pro wrapper que envolve TODO
+  // o conteúdo de fundo da tela (fora dos overlays); `modalCardRef`
+  // aponta pro card do modal em si, onde o foco entra/fica preso.
+  const mainContentRef = useRef<View>(null);
+  const modalCardRef = useRef<View>(null);
+  const importTriggerRef = useRef<HTMLElement | null>(null);
 
   const [importOpen, setImportOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
@@ -411,6 +559,11 @@ function AdminDashboard({ user }: { user: User }) {
   const itemsLoading = overviewLoading;
 
   useEffect(() => {
+    // Trocar de categoria NÃO efetiva mais uma exclusão em massa
+    // pendente (janela de undo aberta) — ver comentário em
+    // `pendingBulkDelete` (A.5, WCAG 2.2.1). O timer continua correndo
+    // em segundo plano, visível pelo toast de undo independente da aba/
+    // categoria ativa.
     setConfirmDeleteAll(false);
     setExpandedId(null);
     setConfirmDeleteId(null);
@@ -436,6 +589,8 @@ function AdminDashboard({ user }: { user: User }) {
   // andamento, igual o logo "Mensageiros da Paz" volta pra Home do
   // app público.
   function goToAdminHome() {
+    // Voltar pro painel inicial também não efetiva mais a exclusão
+    // pendente na hora — ver comentário em `pendingBulkDelete` (A.5).
     setActiveTab("library");
     setShowAllLibrary(true);
     setCollapsedOverviewCategories(new Set(CATEGORIES));
@@ -591,32 +746,33 @@ function AdminDashboard({ user }: { user: User }) {
     );
   }
 
-  async function removeSelected() {
+  // M7/decisão 4: exclusão em massa não apaga mais na hora — abre a
+  // janela de undo (`startPendingBulkDelete`) e só efetiva quando o
+  // timer expira ou o admin navega para outro lugar (ver comentário na
+  // definição de `pendingBulkDelete`).
+  function removeSelected() {
     if (selectedIds.size === 0) return;
     if (!confirmDeleteAll) {
       setConfirmDeleteAll(true);
       return;
     }
-    setDeletingAll(true);
-    try {
-      const toDelete = sortedItems.filter((i) => selectedIds.has(i.id));
-      for (const item of toDelete) {
-        await adminDeleteItem(item.id);
-        syncItemDeleteToSheet(item.category, item.title, user.email ?? "admin");
-      }
-      notify(`${selectedIds.size} item(ns) apagado(s) de ${CATEGORY_LABEL[category]}.`);
-      setSelectedIds(new Set());
-      setSelectMode(false);
-      refreshCounts();
-    } catch {
-      notify("Não foi possível apagar os itens selecionados.", "error");
-    } finally {
-      setDeletingAll(false);
-      setConfirmDeleteAll(false);
-    }
+    const toDelete = sortedItems.filter((i) => selectedIds.has(i.id));
+    const count = toDelete.length;
+    startPendingBulkDelete(toDelete, category);
+    notify(`${count} ${count === 1 ? "item excluído" : "itens excluídos"}.`);
+    setSelectedIds(new Set());
+    setSelectMode(false);
+    setConfirmDeleteAll(false);
   }
 
   async function openImport() {
+    // Guarda o elemento com foco (o botão "Importar da planilha") pra
+    // devolver o foco a ele quando o modal fechar (A.4, WCAG 2.4.3) —
+    // só existe DOM na web; em nativo isso é undefined e o efeito
+    // abaixo simplesmente não faz nada com ele.
+    if (typeof document !== "undefined") {
+      importTriggerRef.current = document.activeElement as HTMLElement | null;
+    }
     setImportOpen(true);
     setImportLoading(true);
     setImportError(null);
@@ -663,6 +819,80 @@ function AdminDashboard({ user }: { user: User }) {
     setImportResult(null);
     setImportError(null);
   }
+
+  // A.4 — semântica de diálogo/foco/trap do modal de importação (WCAG
+  // 2.4.3/4.1.2). Só roda no web (RN Web expõe `document`; em nativo o
+  // modal já usa `accessibilityViewIsModal` via prop no JSX, que o
+  // sistema operacional trata sozinho — não precisamos reimplementar
+  // trap de Tab em iOS/Android). Ao abrir: esconde o fundo de leitor de
+  // tela (`aria-hidden`/`inert`), move o foco pro primeiro elemento
+  // focável do modal e prende o Tab dentro dele; Escape fecha. Ao
+  // fechar: desfaz tudo e devolve o foco pro gatilho.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const mainEl = mainContentRef.current as unknown as HTMLElement | null;
+    const cardEl = modalCardRef.current as unknown as HTMLElement | null;
+
+    if (!importOpen) {
+      if (mainEl) {
+        mainEl.removeAttribute("aria-hidden");
+        (mainEl as unknown as { inert?: boolean }).inert = false;
+      }
+      return;
+    }
+
+    if (mainEl) {
+      mainEl.setAttribute("aria-hidden", "true");
+      // `inert` (suportado nos navegadores atuais) tira o fundo inteiro
+      // da ordem de tabulação de uma vez, sem precisar percorrer nó a
+      // nó — cai graciosamente pra "não faz nada" em navegadores sem
+      // suporte, e o trap de Tab abaixo ainda cobre esse caso.
+      (mainEl as unknown as { inert?: boolean }).inert = true;
+    }
+
+    function getFocusable(): HTMLElement[] {
+      if (!cardEl) return [];
+      return Array.from(
+        cardEl.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+    }
+
+    const focusables = getFocusable();
+    (focusables[0] ?? cardEl)?.focus();
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeImport();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = getFocusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+      if (mainEl) {
+        mainEl.removeAttribute("aria-hidden");
+        (mainEl as unknown as { inert?: boolean }).inert = false;
+      }
+      importTriggerRef.current?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importOpen]);
 
   function cycleMapping(columnIndex: number) {
     setImportMapping((current) => {
@@ -772,9 +1002,31 @@ function AdminDashboard({ user }: { user: User }) {
   }
 
   const sortedItems = [...items].sort((a, b) => a.order - b.order);
+  // Itens com exclusão em massa pendente (janela de undo aberta) somem
+  // da lista na hora, sem esperar o Firestore confirmar — ver
+  // `startPendingBulkDelete`.
+  const displayItems =
+    pendingBulkDelete && pendingBulkDelete.category === category
+      ? sortedItems.filter((i) => !pendingBulkDelete.ids.includes(i.id))
+      : sortedItems;
+
+  // Trocar de aba também não efetiva mais uma exclusão em massa
+  // pendente — ver comentário em `pendingBulkDelete` (A.5).
+  function handleSelectTab(tab: Tab) {
+    setActiveTab(tab);
+  }
 
   return (
     <View style={styles.screen}>
+      {/*
+        Conteúdo de fundo "verdadeiro" da tela (tudo exceto os overlays
+        soltos abaixo — toasts e o modal de importação). Precisa de um
+        wrapper próprio com `ref` pra poder virar `aria-hidden`/`inert`
+        enquanto o modal de importação estiver aberto (A.4, WCAG
+        4.1.2/2.4.3): sem isso, Tab vaza do modal pro banner/Sair/
+        sidebar/abas atrás dele, e leitor de tela ainda "vê" o fundo.
+      */}
+      <View ref={mainContentRef}>
       <View style={styles.headerRow}>
         <PressableScale
           style={styles.adminBanner}
@@ -798,21 +1050,15 @@ function AdminDashboard({ user }: { user: User }) {
       <Text style={styles.title}>Admin</Text>
       <Text style={styles.helper}>Logado como {user.email}</Text>
 
-      <View style={styles.tabRow}>
-        {TABS.map((tab) => (
-          <Pressable
-            key={tab.key}
-            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            onPress={() => setActiveTab(tab.key)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: activeTab === tab.key }}
-          >
-            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-              {tab.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      {/* Navegação: sidebar lateral em desktop (≥960px, decisão 1 do
+          Head), segmented control em pílula em mobile/tablet — mesmo
+          estado (`activeTab`) controla os dois (design/04 §2.1/§2.2). A
+          sidebar em si entra dentro de `AdminTwoPaneLayout` abaixo (fica
+          ao lado dos painéis, não empilhada aqui) — em mobile o
+          segmented control renderiza aqui, no topo, como já era. */}
+      {!isDesktop ? (
+        <AdminSegmentedTabs tabs={TABS} activeKey={activeTab} onSelect={handleSelectTab} />
+      ) : null}
       {activeTab === "guide" ? (
         <PressableScale
           style={styles.guideOpenNewTabLink}
@@ -832,89 +1078,61 @@ function AdminDashboard({ user }: { user: User }) {
           </Text>
 
           <View style={styles.categoryRow}>
-            <Pressable
-              style={[styles.categoryChip, showAllLibrary && styles.categoryChipActive]}
+            <CategoryChip
+              label="Biblioteca completa"
+              selected={showAllLibrary}
               onPress={() => setShowAllLibrary(true)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: showAllLibrary }}
-            >
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  showAllLibrary && styles.categoryChipTextActive,
-                ]}
-              >
-                Biblioteca completa
-              </Text>
-            </Pressable>
+            />
             {CATEGORIES.map((c) => (
-              <Pressable
+              <CategoryChip
                 key={c}
-                style={[
-                  styles.categoryChip,
-                  !showAllLibrary && category === c && styles.categoryChipActive,
-                ]}
+                label={`${CATEGORY_LABEL[c]} (${categoryCounts[c]})`}
+                selected={!showAllLibrary && category === c}
                 onPress={() => {
                   setShowAllLibrary(false);
                   setCategory(c);
                 }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: !showAllLibrary && category === c }}
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    !showAllLibrary && category === c && styles.categoryChipTextActive,
-                  ]}
-                >
-                  {CATEGORY_LABEL[c]} ({categoryCounts[c]})
-                </Text>
-              </Pressable>
+              />
             ))}
           </View>
         </View>
       ) : null}
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <AdminTwoPaneLayout
+        sidebar={isDesktop ? <AdminSidebar items={TABS} activeKey={activeTab} onSelect={handleSelectTab} /> : null}
+        paneA={
+          <>
         {activeTab === "practice" ? (
           <View style={styles.libraryCard}>
             <View style={styles.libraryCardHeader}>
               <Text style={styles.libraryCardTitle}>Prática da Semana</Text>
-              <Pressable
+              <PressableScale
                 style={styles.sheetButton}
                 onPress={() => Linking.openURL(PRACTICE_SHEET_URL)}
                 accessibilityRole="link"
               >
                 <Text style={styles.sheetButtonText}>Índice de Práticas (planilha) →</Text>
-              </Pressable>
+              </PressableScale>
             </View>
             {practiceLoading ? (
-              <Text style={styles.helper}>Carregando…</Text>
+              <LoadingRow count={2} />
             ) : (
               <>
-                <Text style={styles.fieldHint}>Texto exibido no app</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
+                <AdminTextArea
+                  fieldId="practice-text"
+                  label="Texto exibido no app"
                   value={practiceText}
                   onChangeText={setPracticeText}
-                  multiline
                   placeholder="Texto da prática desta semana"
-                  placeholderTextColor={colors.textSecondary}
                 />
-                <Text style={styles.fieldHint}>
-                  Inspiração (opcional — fica só no registro interno/planilha, não
-                  aparece no app)
-                </Text>
-                <TextInput
-                  style={styles.input}
+                <AdminInput
+                  fieldId="practice-inspiration"
+                  label="Inspiração (opcional — fica só no registro interno/planilha, não aparece no app)"
                   value={practiceInspiration}
                   onChangeText={setPracticeInspiration}
                   placeholder="Ex.: versículo, autor, referência"
-                  placeholderTextColor={colors.textSecondary}
                 />
-                <Pressable style={styles.primaryButton} onPress={savePractice} accessibilityRole="button">
-                  <Text style={styles.primaryButtonText}>Salvar</Text>
-                </Pressable>
+                <AdminButton label="Salvar" onPress={savePractice} variant="primary" />
               </>
             )}
           </View>
@@ -932,10 +1150,7 @@ function AdminDashboard({ user }: { user: User }) {
                   uma categoria ou num item pra abrir só aquela categoria.
                 </Text>
                 {overviewLoading ? (
-                  <>
-                    <View style={styles.skeletonRow} />
-                    <View style={styles.skeletonRow} />
-                  </>
+                  <LoadingRow count={2} />
                 ) : (
                   CATEGORIES.map((c) => {
                     const CatIcon = CATEGORY_ICON[c];
@@ -1021,7 +1236,7 @@ function AdminDashboard({ user }: { user: User }) {
               <View style={styles.libraryCardHeader}>
                 <Text style={styles.libraryCardTitle}>{CATEGORY_LABEL[category]}</Text>
                 <View style={styles.libraryCardButtonsRow}>
-                  <Pressable
+                  <PressableScale
                     style={styles.sheetButton}
                     onPress={() => Linking.openURL(CATEGORY_SHEET_URL[category])}
                     accessibilityRole="link"
@@ -1029,34 +1244,61 @@ function AdminDashboard({ user }: { user: User }) {
                     <Text style={styles.sheetButtonText}>
                       Índice de {CATEGORY_LABEL[category]} (planilha) →
                     </Text>
-                  </Pressable>
-                  <Pressable
+                  </PressableScale>
+                  <PressableScale
                     style={styles.importButton}
                     onPress={openImport}
                     accessibilityRole="button"
                   >
                     <Text style={styles.importButtonText}>Importar da planilha</Text>
-                  </Pressable>
+                  </PressableScale>
                 </View>
               </View>
 
               <View style={styles.divider} />
 
+              {/*
+                "Novo item" ancorado no TOPO da lista (decisão 3 do Head,
+                design/04 §2.2/§2.4) — antes ficava depois da lista +
+                seleção em massa (`AdminScreen.tsx`, histórico). O
+                formulário em si abre no Painel B em desktop (ao lado da
+                lista) e empilhado logo abaixo em mobile/tablet — ver
+                `paneB` no `AdminTwoPaneLayout` mais abaixo.
+              */}
+              <PressableScale
+                style={styles.manualToggle}
+                onPress={() => {
+                  if (!manualOpen) startNew();
+                  else setManualOpen(false);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: manualOpen }}
+              >
+                <Text style={styles.formGroupTitle}>
+                  {editingId ? "Editando item" : "Novo item"}
+                </Text>
+                <Chevron expanded={manualOpen} />
+              </PressableScale>
+              {!manualOpen ? (
+                <Text style={styles.fieldHint}>
+                  Cadastrar ou editar um item de {CATEGORY_LABEL[category]} à mão
+                  (sem planilha).
+                </Text>
+              ) : null}
+
+              <View style={styles.divider} />
+
               {itemsLoading ? (
-                <>
-                  <View style={styles.skeletonRow} />
-                  <View style={styles.skeletonRow} />
-                  <View style={styles.skeletonRow} />
-                </>
+                <LoadingRow count={3} />
               ) : sortedItems.length === 0 ? (
-                <Text style={styles.helper}>Nenhum item cadastrado nesta categoria.</Text>
+                <AdminEmptyState categoryLabel={CATEGORY_LABEL[category]} onCreatePress={startNew} />
               ) : (
-                sortedItems.map((item, index) => {
+                displayItems.map((item, index) => {
                   const expanded = expandedId === item.id;
                   const selected = selectedIds.has(item.id);
                   return (
                     <View key={item.id} style={styles.accordionCard}>
-                      <Pressable
+                      <PressableScale
                         style={styles.accordionHeader}
                         onPress={() =>
                           selectMode
@@ -1074,28 +1316,12 @@ function AdminDashboard({ user }: { user: User }) {
                         <View style={styles.itemTextColumn}>
                           <Text style={styles.itemTitle}>{item.title}</Text>
                           <View style={styles.badgeRow}>
-                            <View
-                              style={[
-                                styles.statusBadge,
-                                item.published ? styles.statusBadgePublished : styles.statusBadgeDraft,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.statusBadgeText,
-                                  item.published
-                                    ? styles.statusBadgeTextPublished
-                                    : styles.statusBadgeTextDraft,
-                                ]}
-                              >
-                                {item.published ? "Publicado" : "Rascunho"}
-                              </Text>
-                            </View>
+                            <StatusBadge status={item.published ? "published" : "draft"} />
                             <Text style={styles.itemMeta}>ordem {item.order}</Text>
                           </View>
                         </View>
                         {!selectMode ? <Chevron expanded={expanded} /> : null}
-                      </Pressable>
+                      </PressableScale>
 
                       {expanded && !selectMode ? (
                         <View style={styles.accordionBody}>
@@ -1125,11 +1351,11 @@ function AdminDashboard({ user }: { user: User }) {
                             <PressableScale
                               style={[
                                 styles.reorderButton,
-                                index === sortedItems.length - 1 && styles.buttonDisabled,
+                                index === displayItems.length - 1 && styles.buttonDisabled,
                               ]}
                               hitSlop={8}
                               onPress={() => moveItem(item, 1)}
-                              disabled={index === sortedItems.length - 1}
+                              disabled={index === displayItems.length - 1}
                               accessibilityRole="button"
                               accessibilityLabel="Mover para baixo"
                             >
@@ -1168,133 +1394,97 @@ function AdminDashboard({ user }: { user: User }) {
                 <>
                   <View style={styles.divider} />
                   {!selectMode ? (
-                    <Pressable
-                      style={styles.selectModeButton}
+                    <AdminButton
+                      label="Selecionar itens para apagar"
                       onPress={() => setSelectMode(true)}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.selectModeButtonText}>Selecionar itens para apagar</Text>
-                    </Pressable>
+                      variant="secondary"
+                    />
                   ) : (
                     <>
                       <View style={styles.selectBar}>
-                        <Pressable onPress={toggleSelectAll} accessibilityRole="button">
+                        <PressableScale onPress={toggleSelectAll} accessibilityRole="button">
                           <Text style={styles.link}>
                             {selectedIds.size === sortedItems.length
                               ? "Desmarcar todos"
                               : "Selecionar todos"}
                           </Text>
-                        </Pressable>
+                        </PressableScale>
                         <Text style={styles.itemMeta}>
                           {selectedIds.size} de {sortedItems.length} selecionado(s)
                         </Text>
                       </View>
+                      {/*
+                        M7 (design/04 §1.4/§4.12): copy da confirmação
+                        reflete a decisão 4 (undo real) — não fala mais em
+                        "não dá para desfazer" (já dá, por alguns
+                        segundos). Botão de confirmação = "Excluir N
+                        itens".
+                      */}
+                      {confirmDeleteAll && selectedIds.size >= 2 ? (
+                        <Text style={styles.fieldHint}>
+                          Você pode desfazer por alguns segundos depois.
+                        </Text>
+                      ) : null}
                       <View style={styles.formButtonsRow}>
-                        <Pressable
-                          style={[
-                            styles.dangerButton,
-                            styles.selectDeleteButton,
-                            (selectedIds.size === 0 || deletingAll) && styles.buttonDisabled,
-                          ]}
+                        <AdminButton
+                          label={
+                            confirmDeleteAll
+                              ? `Excluir ${selectedIds.size} ${selectedIds.size === 1 ? "item" : "itens"}`
+                              : selectedIds.size === 0
+                                ? "Apagar selecionados"
+                                : `Apagar selecionados (${selectedIds.size})`
+                          }
                           onPress={removeSelected}
-                          disabled={selectedIds.size === 0 || deletingAll}
-                          accessibilityRole="button"
-                        >
-                          <Text style={styles.dangerButtonText}>
-                            {deletingAll
-                              ? "Apagando…"
-                              : confirmDeleteAll
-                                ? `Confirmar: apagar ${selectedIds.size} item(ns)?`
-                                : selectedIds.size === 0
-                                  ? "Apagar selecionados"
-                                  : `Apagar selecionados (${selectedIds.size})`}
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          style={styles.secondaryButton}
+                          disabled={selectedIds.size === 0}
+                          variant="destructive"
+                        />
+                        <AdminButton
+                          label="Cancelar"
                           onPress={() => {
                             setSelectMode(false);
                             setSelectedIds(new Set());
                             setConfirmDeleteAll(false);
                           }}
-                          accessibilityRole="button"
-                        >
-                          <Text style={styles.secondaryButtonText}>Cancelar</Text>
-                        </Pressable>
+                          variant="secondary"
+                        />
                       </View>
                     </>
                   )}
                 </>
               ) : null}
-
-              <View style={styles.divider} />
-
-              {/*
-                "Novo item" deixou de ser uma aba própria (2026-09-21, a
-                pedido do Head): virou "Publicação manual", uma seção
-                recolhível logo abaixo dos itens de CADA categoria da
-                Biblioteca — evita duas telas/fluxos diferentes pro
-                mesmo lugar (cadastrar/editar um item), reduzindo erro
-                de navegação e duplicidade.
-              */}
-              <Pressable
-                style={styles.manualToggle}
-                onPress={() => {
-                  if (!manualOpen) startNew();
-                  else setManualOpen(false);
-                }}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: manualOpen }}
-              >
-                <Text style={styles.formGroupTitle}>
-                  {editingId ? "Editando item" : "Publicação manual"}
-                </Text>
-                <Chevron expanded={manualOpen} />
-              </Pressable>
-              {!manualOpen ? (
-                <Text style={styles.fieldHint}>
-                  Cadastrar ou editar um item de {CATEGORY_LABEL[category]} à mão
-                  (sem planilha).
-                </Text>
-              ) : null}
             </View>
             )}
-
-            {manualOpen && !showAllLibrary ? (
-              <>
+          </>
+        ) : null}
+          </>
+        }
+        paneB={
+          activeTab === "library" && manualOpen && !showAllLibrary ? (
+            <>
             <View style={styles.libraryCard}>
               <Text style={styles.formGroupTitle}>Identificação</Text>
-              <TextInput
-                style={styles.input}
+              <AdminInput
+                fieldId="item-title"
                 placeholder="Título"
-                placeholderTextColor={colors.textSecondary}
+                accessibilityLabel="Título"
                 value={form.title}
                 onChangeText={(title) => setForm((f) => ({ ...f, title }))}
               />
-              <TextInput
-                style={styles.input}
+              <AdminInput
+                fieldId="item-description"
                 placeholder="Descrição (ex: Autor · Ano)"
-                placeholderTextColor={colors.textSecondary}
+                accessibilityLabel="Descrição"
                 value={form.description}
                 onChangeText={(description) => setForm((f) => ({ ...f, description }))}
               />
               <View style={styles.categoryRow}>
                 {CATEGORIES.map((c) => (
-                  <Pressable
+                  <CategoryChip
                     key={c}
-                    style={[styles.categoryChip, form.category === c && styles.categoryChipActive]}
+                    label={CATEGORY_LABEL[c]}
+                    selected={form.category === c}
                     onPress={() => setForm((f) => ({ ...f, category: c }))}
-                    accessibilityRole="button"
-                  >
-                    <Text
-                      style={[
-                        styles.categoryChipText,
-                        form.category === c && styles.categoryChipTextActive,
-                      ]}
-                    >
-                      {CATEGORY_LABEL[c]}
-                    </Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
             </View>
@@ -1305,18 +1495,17 @@ function AdminDashboard({ user }: { user: User }) {
                 Texto direto (opcional — para orações/textos exibidos na hora, sem
                 precisar de arquivo)
               </Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
+              <AdminTextArea
+                fieldId="item-text"
                 placeholder="Cole aqui o texto completo, se houver"
-                placeholderTextColor={colors.textSecondary}
+                accessibilityLabel="Texto direto"
                 value={form.text}
                 onChangeText={(text) => setForm((f) => ({ ...f, text }))}
-                multiline
               />
 
               <View style={styles.categoryRow}>
                 {(["upload", "streaming"] as ContentSource[]).map((s) => (
-                  <Pressable
+                  <PressableScale
                     key={s}
                     style={[styles.categoryChip, form.source === s && styles.categoryChipActive]}
                     onPress={() => setForm((f) => ({ ...f, source: s }))}
@@ -1330,7 +1519,7 @@ function AdminDashboard({ user }: { user: User }) {
                     >
                       {s === "upload" ? "Arquivo (qualquer link direto)" : "Streaming de música"}
                     </Text>
-                  </Pressable>
+                  </PressableScale>
                 ))}
               </View>
 
@@ -1341,17 +1530,17 @@ function AdminDashboard({ user }: { user: User }) {
                     funciona (Google Drive, Dropbox, OneDrive, Cloudflare Pages,
                     etc.), desde que o link seja acessível publicamente.
                   </Text>
-                  <TextInput
-                    style={styles.input}
+                  <AdminInput
+                    fieldId="item-file-url"
                     placeholder="https://drive.google.com/... ou https://mensageiros-da-paz.pages.dev/content/..."
-                    placeholderTextColor={colors.textSecondary}
+                    accessibilityLabel="Link direto do arquivo"
                     value={form.fileUrl}
                     onChangeText={(fileUrl) => setForm((f) => ({ ...f, fileUrl }))}
                     autoCapitalize="none"
                   />
                   <View style={styles.categoryRow}>
                     {(["pdf", "image", "audio", "gdoc", "txt"] as FileType[]).map((ft) => (
-                      <Pressable
+                      <PressableScale
                         key={ft}
                         style={[styles.categoryChip, form.fileType === ft && styles.categoryChipActive]}
                         onPress={() => setForm((f) => ({ ...f, fileType: ft }))}
@@ -1365,7 +1554,7 @@ function AdminDashboard({ user }: { user: User }) {
                         >
                           {ft.toUpperCase()}
                         </Text>
-                      </Pressable>
+                      </PressableScale>
                     ))}
                   </View>
                   {form.fileType === "audio" ? (
@@ -1410,10 +1599,10 @@ function AdminDashboard({ user }: { user: User }) {
                         título na lista de Livros; sem capa, o app mostra um
                         ícone de livro no lugar.
                       </Text>
-                      <TextInput
-                        style={styles.input}
+                      <AdminInput
+                        fieldId="item-cover-url"
                         placeholder="https://drive.google.com/... (imagem da capa)"
-                        placeholderTextColor={colors.textSecondary}
+                        accessibilityLabel="Link da imagem da capa"
                         value={form.coverImageUrl}
                         onChangeText={(coverImageUrl) => setForm((f) => ({ ...f, coverImageUrl }))}
                         autoCapitalize="none"
@@ -1430,7 +1619,7 @@ function AdminDashboard({ user }: { user: User }) {
                   </Text>
                   <View style={styles.categoryRow}>
                     {STREAMING_PROVIDERS.map((p) => (
-                      <Pressable
+                      <PressableScale
                         key={p}
                         style={[
                           styles.categoryChip,
@@ -1447,13 +1636,13 @@ function AdminDashboard({ user }: { user: User }) {
                         >
                           {STREAMING_PROVIDER_LABEL[p]}
                         </Text>
-                      </Pressable>
+                      </PressableScale>
                     ))}
                   </View>
-                  <TextInput
-                    style={styles.input}
+                  <AdminInput
+                    fieldId="item-streaming-url"
                     placeholder="https://open.spotify.com/track/... (ou link da plataforma escolhida)"
-                    placeholderTextColor={colors.textSecondary}
+                    accessibilityLabel="Link de streaming"
                     value={form.streamingUrl}
                     onChangeText={(streamingUrl) => setForm((f) => ({ ...f, streamingUrl }))}
                     autoCapitalize="none"
@@ -1464,10 +1653,10 @@ function AdminDashboard({ user }: { user: User }) {
 
             <View style={styles.libraryCard}>
               <Text style={styles.formGroupTitle}>Publicação</Text>
-              <TextInput
-                style={styles.input}
+              <AdminInput
+                fieldId="item-order"
                 placeholder="Ordem (número)"
-                placeholderTextColor={colors.textSecondary}
+                accessibilityLabel="Ordem"
                 value={String(form.order)}
                 onChangeText={(v) => setForm((f) => ({ ...f, order: Number(v) || 0 }))}
                 keyboardType="numeric"
@@ -1485,46 +1674,78 @@ function AdminDashboard({ user }: { user: User }) {
               {formError ? <Text style={styles.error}>{formError}</Text> : null}
 
               <View style={styles.formButtonsRow}>
-                <Pressable style={styles.primaryButton} onPress={submitForm} accessibilityRole="button">
-                  <Text style={styles.primaryButtonText}>
-                    {editingId ? "Salvar alterações" : "Adicionar item"}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={styles.secondaryButton}
+                <AdminButton
+                  label={editingId ? "Salvar alterações" : "Adicionar item"}
+                  onPress={submitForm}
+                  variant="primary"
+                />
+                <AdminButton
+                  label={editingId ? "Cancelar" : "Fechar"}
                   onPress={() => {
                     setEditingId(null);
                     setForm({ ...EMPTY_FORM, category });
                     setFormError(null);
                     setManualOpen(false);
                   }}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.secondaryButtonText}>
-                    {editingId ? "Cancelar" : "Fechar"}
-                  </Text>
-                </Pressable>
+                  variant="secondary"
+                />
               </View>
             </View>
-              </>
-            ) : null}
-          </>
-        ) : null}
-      </ScrollView>
+            </>
+          ) : null
+        }
+      />
+      </View>
 
       <Toast toast={toast} />
 
+      {pendingBulkDelete ? (
+        <View style={styles.undoToastWrapper} pointerEvents="box-none">
+          <AdminToast
+            variant="undo"
+            message={`${pendingBulkDelete.ids.length} ${pendingBulkDelete.ids.length === 1 ? "item excluído" : "itens excluídos"}.`}
+            actionLabel="Desfazer"
+            onAction={cancelPendingBulkDelete}
+            secondsRemaining={pendingBulkDelete.secondsRemaining}
+            onPauseTimer={pausePendingBulkDeleteTimer}
+            onResumeTimer={resumePendingBulkDeleteTimer}
+          />
+        </View>
+      ) : null}
+
       {importOpen ? (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View
+            ref={modalCardRef}
+            style={styles.modalCard}
+            // iOS/Android: o SO trata o modal como uma "ilha" de foco
+            // separada da tela por trás (`accessibilityViewIsModal`).
+            // Web: `role="dialog"` + `aria-modal` + `aria-labelledby`
+            // dão a semântica de diálogo pro leitor de tela; o
+            // trap/foco em si é feito no `useEffect` acima (RN Web
+            // repassa `role`/`aria-*`/`tabIndex` direto pro DOM).
+            accessibilityViewIsModal
+            accessibilityRole="none"
+            accessibilityLabel={`Importar ${CATEGORY_LABEL[category]}`}
+            {...({
+              role: "dialog",
+              "aria-modal": "true",
+              "aria-labelledby": "import-modal-title",
+              tabIndex: -1,
+            } as Record<string, string | number>)}
+          >
             <ScrollView contentContainerStyle={styles.modalScrollContent}>
               <View style={styles.headerRow}>
-                <Text style={styles.libraryCardTitle}>
+                <Text
+                  style={styles.libraryCardTitle}
+                  nativeID="import-modal-title"
+                  accessibilityRole="header"
+                >
                   Importar {CATEGORY_LABEL[category]}
                 </Text>
-                <Pressable onPress={closeImport} accessibilityRole="button">
+                <PressableScale onPress={closeImport} accessibilityRole="button">
                   <Text style={styles.link}>Fechar</Text>
-                </Pressable>
+                </PressableScale>
               </View>
 
               {importLoading ? (
@@ -1544,7 +1765,7 @@ function AdminDashboard({ user }: { user: User }) {
                   </Text>
                   <View style={styles.categoryRow}>
                     {importHeaders.map((header, columnIndex) => (
-                      <Pressable
+                      <PressableScale
                         key={`${header}-${columnIndex}`}
                         style={[
                           styles.categoryChip,
@@ -1564,7 +1785,7 @@ function AdminDashboard({ user }: { user: User }) {
                           {header || `Coluna ${columnIndex + 1}`}:{" "}
                           {IMPORT_FIELD_LABEL[importMapping[columnIndex] ?? "ignore"]}
                         </Text>
-                      </Pressable>
+                      </PressableScale>
                     ))}
                   </View>
 
@@ -1573,7 +1794,7 @@ function AdminDashboard({ user }: { user: User }) {
                       Selecione as linhas que quer importar ({importSelected.size} de{" "}
                       {importRows.length}):
                     </Text>
-                    <Pressable
+                    <PressableScale
                       onPress={() =>
                         setImportSelected((current) =>
                           current.size === importRows.length
@@ -1588,13 +1809,13 @@ function AdminDashboard({ user }: { user: User }) {
                           ? "Desmarcar todos"
                           : "Selecionar todos"}
                       </Text>
-                    </Pressable>
+                    </PressableScale>
                   </View>
                   {importRows.map((row, rowIndex) => {
                     const title = valueForField(row, "title") || "(sem título)";
                     const description = valueForField(row, "description");
                     return (
-                      <Pressable
+                      <PressableScale
                         key={rowIndex}
                         style={styles.importRow}
                         onPress={() => toggleRowSelected(rowIndex)}
@@ -1622,7 +1843,7 @@ function AdminDashboard({ user }: { user: User }) {
                             <Text style={styles.itemDescription}>{description}</Text>
                           ) : null}
                         </View>
-                      </Pressable>
+                      </PressableScale>
                     );
                   })}
 
@@ -1630,7 +1851,7 @@ function AdminDashboard({ user }: { user: User }) {
                     <Text style={styles.success}>{importResult}</Text>
                   ) : null}
 
-                  <Pressable
+                  <PressableScale
                     style={[
                       styles.primaryButton,
                       (importRunning || importSelected.size === 0) && styles.buttonDisabled,
@@ -1644,7 +1865,7 @@ function AdminDashboard({ user }: { user: User }) {
                         ? "Importando…"
                         : `Importar ${importSelected.size} selecionado(s)`}
                     </Text>
-                  </Pressable>
+                  </PressableScale>
                 </>
               )}
             </ScrollView>
@@ -1692,6 +1913,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: ADMIN_BG,
     padding: spacing.lg,
+  },
+  // Teto de leitura pro formulário de login (bug de auditoria
+  // 2026-09-22): sem isso, em telas ultrawide (1920px) os campos
+  // esticavam ~1870px de largura. `width:"100%"` garante que em telas
+  // estreitas (320px) ele continua ocupando toda a largura disponível
+  // (o `maxWidth` só entra em ação acima de ~480px); `alignSelf:"center"`
+  // centraliza o bloco quando há espaço sobrando.
+  loginContent: {
+    width: "100%",
+    maxWidth: 480,
+    alignSelf: "center",
   },
   scrollContent: {
     paddingBottom: spacing.xxl,
@@ -1798,7 +2030,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "700",
-    fontSize: 16,
+    // M1 (design/04 §1.4): 16 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textPrimary,
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
@@ -1820,17 +2053,20 @@ const styles = StyleSheet.create({
   },
   helper: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 14,
+    // M3 (design/04 §1.4): 14 -> 17, piso de minFontSize.
+    fontSize: 17,
+    lineHeight: 22,
     color: colors.textSecondary,
     marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
   fieldHint: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 12,
+    // M3 (design/04 §1.4): 12 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    lineHeight: 16,
+    lineHeight: 22,
   },
   input: {
     minHeight: minTouchSize,
@@ -1857,6 +2093,12 @@ const styles = StyleSheet.create({
   passwordInput: {
     flex: 1,
   },
+  // Usado no `containerStyle` de `AdminInput` (o input de senha some
+  // dentro de `passwordRow`, ao lado do botão mostrar/ocultar).
+  passwordInputContainer: {
+    flex: 1,
+    marginBottom: 0,
+  },
   showPasswordButton: {
     minHeight: minTouchSize,
     justifyContent: "center",
@@ -1875,7 +2117,11 @@ const styles = StyleSheet.create({
     minHeight: minTouchSize,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.accent,
+    // M6 (design/04 §1.4): colors.accent (Sage, reservado a
+    // confirmação/estado publicado) -> colors.primary (Mulberry) —
+    // corrige inconsistência com `primaryButtonWide`, que já usava
+    // Mulberry corretamente.
+    backgroundColor: colors.primary,
     borderRadius: radii.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -1968,7 +2214,8 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "700",
-    fontSize: 16,
+    // M4 (design/04 §1.4): 16 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.surface,
   },
   secondaryButton: {
@@ -1986,7 +2233,8 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontFamily: fonts.bodyFallback,
     fontWeight: "600",
-    fontSize: 16,
+    // M4 (design/04 §1.4): 16 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textSecondary,
   },
   formButtonsRow: {
@@ -1995,7 +2243,8 @@ const styles = StyleSheet.create({
   },
   error: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 14,
+    // M3 (design/04 §1.4): 14 -> 17, piso de minFontSize.
+    fontSize: 17,
     // Mesmo bug do linkDanger: colors.accent é a cor de SUCESSO
     // (Sage), errada pra mensagem de erro.
     color: colors.danger,
@@ -2003,7 +2252,8 @@ const styles = StyleSheet.create({
   },
   success: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 14,
+    // M3 (design/04 §1.4): 14 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.success,
     marginTop: spacing.sm,
   },
@@ -2106,7 +2356,8 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     fontFamily: fonts.bodyFallback,
-    fontSize: 13,
+    // M5 (design/04 §1.4): 13 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textPrimary,
   },
   categoryChipTextActive: {
@@ -2142,7 +2393,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radii.md,
     marginBottom: spacing.xs,
-    overflow: "hidden",
+    // Sem overflow:"hidden" (bug de auditoria a11y 2026-09-22): cortava o
+    // anel de foco (WCAG 2.4.7) dos PressableScale filhos, que é
+    // desenhado 2px PARA FORA da borda (outlineOffset). Não é necessário
+    // pra manter o visual arredondado: os filhos (toggle/goButton) não
+    // têm backgroundColor próprio, então o fundo/raio deste container já
+    // aparece corretamente por trás deles sem precisar de clipping.
   },
   overviewGroupToggle: {
     flex: 1,
@@ -2209,7 +2465,8 @@ const styles = StyleSheet.create({
   overviewItemTitle: {
     flex: 1,
     fontFamily: fonts.bodyFallback,
-    fontSize: 13.5,
+    // M2 (design/04 §1.4): 13.5 -> 17, piso de minFontSize.
+    fontSize: 17,
     color: colors.textPrimary,
   },
   overviewItemDraft: {
@@ -2230,7 +2487,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primaryLight,
     marginBottom: spacing.xs,
-    overflow: "hidden",
+    // Sem overflow:"hidden" (mesmo motivo do overviewGroupHeader acima):
+    // cortava o anel de foco do PressableScale do accordionHeader. O
+    // header/body são transparentes por cima do fundo do próprio card,
+    // que já respeita seu borderRadius nativamente.
   },
   accordionHeader: {
     flexDirection: "row",
@@ -2337,6 +2597,17 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyFallback,
     fontSize: 15,
     color: colors.textPrimary,
+  },
+  // Toast de undo (decisão 4/design/04 §4.9) — posição fixa no rodapé
+  // (não disputa o topo com o `Toast` de sucesso/erro existente),
+  // largura contida em telas largas pra não esticar de ponta a ponta.
+  undoToastWrapper: {
+    position: "absolute",
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: spacing.lg,
+    maxWidth: 480,
+    alignSelf: "center",
   },
   toast: {
     position: "absolute",
